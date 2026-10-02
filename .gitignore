@@ -1,0 +1,33 @@
+# dependencies
+node_modules
+
+# yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# eslint
+.eslintcache
+
+# misc
+.DS_Store
+
+# IDE
+.vscode
+.idea
+
+# cli
+dist
+
+.env
+
+# lead agent handoff, never committed
+HANDOFF.md
+
+# environment files, never committed
+.env
+.env.*
+!.env.example

@@ -1,0 +1,56 @@
+{
+  "name": "verdict",
+  "description": "Outcome markets on Hedera: HTS outcome tokens priced by a SaucerSwap pool, settled by a Chainlink feed and resolved by the Hedera Schedule Service with no keeper.",
+  "create-scaffold-hbar": {
+    "capabilities": {
+      "frontend": ["nextjs-app"],
+      "solidityFramework": ["hardhat"],
+      "packageManager": ["yarn", "npm"]
+    },
+    "defaults": {
+      "frontend": "nextjs-app",
+      "solidityFramework": "hardhat",
+      "packageManager": "yarn"
+    },
+    "outro": {
+      "sections": [
+        {
+          "title": "See live testnet markets with nothing configured",
+          "steps": [
+            {
+              "label": "Start the app",
+              "command": "{run:next:dev}"
+            },
+            {
+              "text": "Open http://localhost:3000. The reference deployment on Hedera testnet is committed, so markets load before you deploy anything."
+            }
+          ]
+        },
+        {
+          "title": "Deploy your own",
+          "steps": [
+            {
+              "label": "Generate or import a deployer account",
+              "command": "{run:hardhat:account:generate}"
+            },
+            {
+              "label": "Fund it with testnet HBAR",
+              "url": "https://portal.hedera.com/faucet"
+            },
+            {
+              "label": "Run the contract tests",
+              "command": "{run:hardhat:test}"
+            },
+            {
+              "label": "Deploy to Hedera testnet",
+              "command": "{run:hardhat:deploy} --network hederaTestnet"
+            },
+            {
+              "text": "Then follow README.md, section Deploy your own, to create and seed a first market."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

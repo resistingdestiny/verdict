@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, types, tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install
+        run: yarn install --immutable
+
+      - name: Lint frontend
+        run: yarn next:lint --max-warnings=0
+
+      - name: Lint contracts
+        run: yarn hardhat:lint --max-warnings=0
+
+      - name: Type check frontend
+        run: yarn next:check-types
+
+      - name: Type check contracts package
+        run: yarn hardhat:check-types
+
+      - name: Contract tests
+        run: yarn hardhat:test
+
+      - name: Build frontend
+        run: yarn next:build
+
+      - name: README scripts exist
+        run: node scripts/check-readme-scripts.mjs
+
+  gitleaks:
+    name: Secrets scan over full history
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

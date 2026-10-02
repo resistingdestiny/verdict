@@ -1,0 +1,85 @@
+name: Fresh scaffold
+
+# Runs the real create-scaffold-hbar CLI against this repository at the pushed commit, for npm and for
+# Yarn, then installs, lints, builds, boots the app and requests the five core routes. This is the
+# bounty gate, run on every push and once a day.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  scaffold:
+    name: Scaffold with ${{ matrix.pm }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pm: [npm, yarn]
+    env:
+      TEMPLATE_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Scaffold from this commit
+        run: |
+          npm create scaffold-hbar@latest fresh -- \
+            --template "resistingdestiny/verdict#${TEMPLATE_REF}" \
+            --frontend nextjs-app \
+            --solidity-framework hardhat \
+            --network testnet \
+            --package-manager ${{ matrix.pm }} \
+            --skip-hedera-skills \
+            --yes
+
+      - name: Required files exist
+        working-directory: fresh
+        run: |
+          for f in README.md AGENTS.md LICENSE template.json packages/hardhat/package.json packages/nextjs/package.json; do
+            test -f "$f" || { echo "missing $f"; exit 1; }
+          done
+          if git -C . rev-parse 2>/dev/null; then
+            if git ls-files | grep -E '(^|/)\.env$'; then echo ".env committed"; exit 1; fi
+          fi
+          find . -name ".env" -not -path "*/node_modules/*" | grep . && { echo ".env present in scaffold"; exit 1; } || true
+
+      - name: Install (if the CLI skipped it)
+        working-directory: fresh
+        run: |
+          if [ ! -d node_modules ]; then
+            if [ "${{ matrix.pm }}" = "npm" ]; then npm install; else yarn install; fi
+          fi
+
+      - name: Lint
+        working-directory: fresh
+        run: |
+          if [ "${{ matrix.pm }}" = "npm" ]; then npm run lint; else yarn lint; fi
+
+      - name: Build
+        working-directory: fresh
+        run: |
+          if [ "${{ matrix.pm }}" = "npm" ]; then npm run next:build; else yarn next:build; fi
+
+      - name: Boot and request core routes
+        working-directory: fresh
+        run: |
+          if [ "${{ matrix.pm }}" = "npm" ]; then npm run next:serve & else yarn next:serve & fi
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:3000/ && break
+            sleep 2
+          done
+          for route in / /market/0 /create /portfolio /record; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000${route}")
+            echo "${route} -> ${code}"
+            [ "$code" = "200" ] || exit 1
+          done
