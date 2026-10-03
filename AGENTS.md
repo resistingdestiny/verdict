@@ -63,11 +63,13 @@ yarn format
 yarn next:lint --max-warnings=0
 yarn next:check-types
 yarn next:test                           # frontend unit tests (vitest)
+yarn next:test:e2e                       # Playwright route checks with screenshots into docs/img/screenshots
 yarn hardhat:lint --max-warnings=0
 yarn hardhat:check-types
 yarn hardhat:compile
 yarn hardhat:test                        # whole contract suite
 yarn hardhat:test test/Verdict.test.ts   # one file while iterating
+yarn hardhat:coverage                    # line and branch coverage on the three contracts
 yarn next:build
 
 # Deployer account

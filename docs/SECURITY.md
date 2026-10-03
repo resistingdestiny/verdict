@@ -100,7 +100,6 @@ Paths that only a misbehaving system contract can reach are covered through the 
 
 ## Known limits
 
-
 - Unaudited. Built for a bounty on a deadline; treat it as a starting point, not production code.
 - Testnet only. Do not deploy to mainnet.
 - The void path pays 0.5 HBAR per token pair whatever the question was; markets on slow feeds can void even when the question had a clear answer.
