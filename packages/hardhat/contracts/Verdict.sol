@@ -274,8 +274,13 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         Market storage m = _markets[id];
         if (m.status != Status.Open) return SettleOutcome.NotOpen;
         // The expiry second itself is still "not expired": the round current at expiry can only be known
-        // once that second has passed, and the schedule runs from the next second.
-        if (block.timestamp <= m.expiry) return SettleOutcome.NotExpired;
+        // once that second has passed, and the schedule runs from the next second. HSS executes a schedule
+        // at or after its expiry second by consensus time, while block.timestamp inside that call can trail
+        // consensus time by a second or two (seen on testnet). A call this contract makes to itself can only
+        // be the network running the schedule, since Verdict never calls itself, so that run trusts the
+        // schedule's timing; every other caller waits for block.timestamp to pass the expiry second.
+        bool scheduledRun = bySchedule && msg.sender == address(this);
+        if (!scheduledRun && block.timestamp <= m.expiry) return SettleOutcome.NotExpired;
         (bool ok, int256 answer, uint80 roundId, uint64 updatedAt) = _reading(m);
         if (!ok) return SettleOutcome.NoFreshReading;
 

@@ -227,6 +227,7 @@ Problems hit during this build, with what caused them and what to do. If you hit
 
 | What you see | Why | What to do |
 | --- | --- | --- |
+| A market is past its expiry but still open, and its schedule shows as executed with a `ResolveDeferred("not expired")` event | On the first deployment the scheduled run saw a `block.timestamp` one second behind consensus time and refused to settle; fixed in `_settle` by trusting the schedule's own timing when Verdict calls itself | Anyone can call `resolve` on such a market; the current deployment settles on schedule |
 | `yarn format` rewrites files you never touched | It runs Prettier over both packages, so any file that has drifted from the Prettier style is rewritten along with yours | Format only your files: `yarn workspace @sh/nextjs prettier --write <files>` or `yarn workspace @sh/hardhat prettier --write <files>`. On a clean tree `yarn format` is a no-op; if it is not, the drift was committed earlier and is worth its own commit |
 | `git commit` sits for minutes with no output | The husky pre-commit hook runs lint-staged: `next lint --fix` plus the frontend `tsc` over staged frontend files and `eslint --fix` over staged hardhat files, which is slow on a loaded machine | Wait, or run the lints and type checks by hand (see the CI table in `AGENTS.md`) and commit with `--no-verify` |
 | `yarn hardhat:deploy` does not reach the node on port 8545 | Without `--network localhost` Hardhat uses the in-process network, not the running node | Pass `--network localhost` while `yarn hardhat:chain` runs |

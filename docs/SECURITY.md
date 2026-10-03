@@ -113,6 +113,10 @@ Every line runs. The statements and branches not taken are guards that the mocks
 
 Paths that only a misbehaving system contract or aggregator can reach are covered through the mocks' test controls: `MockHederaTokenService.setForcedCode(selector, code)` makes one HTS call return a chosen code, the same mock returns code 262 once an account has used up its automatic association slots, `MockHederaScheduleService.setForcedCode(22)` reproduces a schedule reported as success without an address, `setCapacityReverts` makes the capacity probe revert, and `MockAggregatorV3.setHistoryStart` stands in for an aggregator that dropped its early rounds. `MockCaller` is a contract account that re-enters `createMarket` from its refund and `sweepSurplus` from its payment, which exercises the reentrancy guards on the two functions whose payment goes to the caller.
 
+### Scheduled run timing
+
+HSS executes a schedule at or after its expiry second by consensus time, but `block.timestamp` inside that call can trail consensus time by a second or two. The first testnet deployment lost market 0's scheduled resolution this way: the run saw the expiry second as not yet passed, emitted `ResolveDeferred("not expired")`, and the schedule was spent. `_settle` now trusts the schedule's timing when the caller is Verdict itself, which only the network's execution of a schedule can arrange, because Verdict never calls itself. Every other caller still waits for `block.timestamp` to pass the expiry second, so the settlement rule (the round current at the expiry second) is unchanged. `test/ScheduledRun.test.ts` covers both paths.
+
 ## Known limits
 
 - Unaudited. Built for a bounty on a deadline; treat it as a starting point, not production code.
