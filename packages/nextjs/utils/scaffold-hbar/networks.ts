@@ -48,7 +48,9 @@ export function getBlockExplorerTxLink(chainId: number, txnHash: string) {
     return "";
   }
 
-  return `${blockExplorerTxURL}/tx/${txnHash}`;
+  // HashScan serves transactions at /transaction/<hash>, not /tx/<hash>.
+  const pathSegment = HEDERA_CHAIN_IDS.has(chainId) ? "transaction" : "tx";
+  return `${blockExplorerTxURL}/${pathSegment}/${txnHash}`;
 }
 
 /**
