@@ -224,7 +224,7 @@ After this, `yarn workspace @sh/hardhat hardhat run scripts/create-market.ts --n
 
 ## 17. The reference deployment
 
-`packages/nextjs/contracts/deployedContracts.ts` is the committed reference deployment on Hedera testnet, and that contract does not know the new kind. The Create page builds its kind menu from `KINDS` in `lib/payoff.ts`, so after this change it offers Outside against a contract whose enum ends at Scalar, and `createMarket` rejects the call with an ABI decoding error. Redeploy and commit the regenerated `deployedContracts.ts`:
+`packages/nextjs/contracts/deployedContracts.ts` is the committed reference deployment on Hedera testnet, and that contract does not know the new kind. The Create page builds its kind menu from `KINDS` in `lib/payoff.ts`, so after this change it offers Outside against a contract whose enum ends at Scalar, and the contract reverts the call, because the ABI decoder rejects an enum value out of range. Redeploy and commit the regenerated `deployedContracts.ts`:
 
 ```bash
 yarn hardhat:deploy --network hederaTestnet
