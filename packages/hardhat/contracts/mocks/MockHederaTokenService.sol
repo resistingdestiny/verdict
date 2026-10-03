@@ -133,8 +133,12 @@ contract MockHtsToken {
 
     function _move(address from, address to, uint256 amount) internal returns (int64) {
         if (!associated[to]) {
-            if (!MockHederaTokenService(payable(hts)).consumeAutoSlot(to)) {
-                return HederaCodes.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT;
+            MockHederaTokenService service = MockHederaTokenService(payable(hts));
+            if (!service.consumeAutoSlot(to)) {
+                return
+                    service.slotsExhausted(to)
+                        ? HederaCodes.NO_REMAINING_AUTOMATIC_ASSOCIATIONS
+                        : HederaCodes.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT;
             }
             associated[to] = true;
         }
@@ -161,6 +165,10 @@ contract MockHederaTokenService {
     address[] public tokens;
     /// @dev Free automatic association slots per account. Unset means none, like a fresh contract on Hedera.
     mapping(address account => uint256) private _autoSlots;
+    /// @dev Accounts that had automatic slots and used them all: the next unassociated transfer fails with 262.
+    mapping(address account => bool) private _slotsExhausted;
+    /// @dev Response code the next call of a given selector returns instead of running. Zero means none.
+    mapping(bytes4 selector => int64 code) private _forcedCodes;
 
     event TokenCreated(address indexed token, address indexed treasury, address supplyKey, uint256 feeTaken);
 
@@ -178,6 +186,18 @@ contract MockHederaTokenService {
     /// @notice Give `account` free automatic association slots. `type(uint256).max` means unlimited.
     function setAutoAssociationSlots(address account, uint256 slots) external {
         _autoSlots[account] = slots;
+        _slotsExhausted[account] = false;
+    }
+
+    /// @notice Make the next `associateToken`, `approve`, `transferFrom`, `transferToken`, `mintToken` or
+    ///         `burnToken` call return `code` without running. Zero clears it. Mirrors the HSS mock's control.
+    function setForcedCode(bytes4 selector, int64 code) external {
+        _forcedCodes[selector] = code;
+    }
+
+    /// @notice True once `account` has used every automatic association slot it was given.
+    function slotsExhausted(address account) external view returns (bool) {
+        return _slotsExhausted[account];
     }
 
     function createFee() public view returns (uint256) {
@@ -193,7 +213,10 @@ contract MockHederaTokenService {
         if (!isHtsToken[msg.sender]) return false;
         uint256 slots = _autoSlots[account];
         if (slots == 0) return false;
-        if (slots != UNLIMITED) _autoSlots[account] = slots - 1;
+        if (slots != UNLIMITED) {
+            _autoSlots[account] = slots - 1;
+            if (slots == 1) _slotsExhausted[account] = true;
+        }
         return true;
     }
 
@@ -236,6 +259,8 @@ contract MockHederaTokenService {
         bytes[] memory
     ) external returns (int64 responseCode, int64 newTotalSupply, int64[] memory serialNumbers) {
         serialNumbers = new int64[](0);
+        int64 forced = _forced();
+        if (forced != 0) return (forced, 0, serialNumbers);
         if (!isHtsToken[token]) return (HederaCodes.INVALID_TOKEN_ID, 0, serialNumbers);
         MockHtsToken t = MockHtsToken(token);
         if (t.supplyKey() == address(0)) return (HederaCodes.TOKEN_HAS_NO_SUPPLY_KEY, 0, serialNumbers);
@@ -250,6 +275,8 @@ contract MockHederaTokenService {
         int64 amount,
         int64[] memory
     ) external returns (int64 responseCode, int64 newTotalSupply) {
+        int64 forced = _forced();
+        if (forced != 0) return (forced, 0);
         if (!isHtsToken[token]) return (HederaCodes.INVALID_TOKEN_ID, 0);
         MockHtsToken t = MockHtsToken(token);
         if (t.supplyKey() == address(0)) return (HederaCodes.TOKEN_HAS_NO_SUPPLY_KEY, 0);
@@ -260,6 +287,8 @@ contract MockHederaTokenService {
     }
 
     function associateToken(address account, address token) external returns (int64 responseCode) {
+        int64 forced = _forced();
+        if (forced != 0) return forced;
         if (!isHtsToken[token]) return HederaCodes.INVALID_TOKEN_ID;
         if (account != msg.sender) return HederaCodes.INVALID_SIGNATURE;
         return MockHtsToken(token).sysAssociate(account);
@@ -281,6 +310,8 @@ contract MockHederaTokenService {
         address receiver,
         int64 amount
     ) external returns (int64 responseCode) {
+        int64 forced = _forced();
+        if (forced != 0) return forced;
         if (!isHtsToken[token]) return HederaCodes.INVALID_TOKEN_ID;
         if (sender != msg.sender) return HederaCodes.INVALID_SIGNATURE;
         if (amount < 0) return HederaCodes.INSUFFICIENT_TOKEN_BALANCE;
@@ -293,11 +324,15 @@ contract MockHederaTokenService {
         address to,
         uint256 amount
     ) external returns (int64 responseCode) {
+        int64 forced = _forced();
+        if (forced != 0) return forced;
         if (!isHtsToken[token]) return HederaCodes.INVALID_TOKEN_ID;
         return MockHtsToken(token).sysTransferFrom(from, msg.sender, to, amount);
     }
 
     function approve(address token, address spender, uint256 amount) external returns (int64 responseCode) {
+        int64 forced = _forced();
+        if (forced != 0) return forced;
         if (!isHtsToken[token]) return HederaCodes.INVALID_TOKEN_ID;
         MockHtsToken(token).sysApprove(msg.sender, spender, amount);
         return HederaCodes.SUCCESS;
@@ -314,6 +349,12 @@ contract MockHederaTokenService {
 
     function isToken(address token) external view returns (int64 responseCode, bool isToken_) {
         return (HederaCodes.SUCCESS, isHtsToken[token]);
+    }
+
+    /// @dev The forced code for the current selector, consumed on read.
+    function _forced() private returns (int64 code) {
+        code = _forcedCodes[msg.sig];
+        if (code != 0) _forcedCodes[msg.sig] = 0;
     }
 
     function _refund(address to, uint256 amount) internal {
