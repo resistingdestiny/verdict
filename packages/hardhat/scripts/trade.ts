@@ -12,7 +12,7 @@ const APPROVE_GAS_LIMIT = 1_000_000n;
 /**
  * Runs one of the four router trades on Hedera testnet with a 2 percent slippage bound.
  *
- *   yarn hardhat run scripts/trade.ts --network hederaTestnet -- --id 3 --trade buyYes --amount 1
+ *   ID=3 TRADE=buyYes AMOUNT=1 yarn hardhat:trade
  *
  * `--amount` is HBAR for buyYes and buyNo, and whole tokens for sellYes and sellNo. sellNo also
  * sends enough HBAR to buy the matching YES, quoted just before the trade with the same 2 percent

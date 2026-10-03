@@ -5,10 +5,10 @@ import { parseArgs, requireArgs, hashscanTx, hashscanContract, WEIBARS_PER_TINYB
 /**
  * Splits HBAR into YES and NO and seeds the market's SaucerSwap pool on Hedera testnet.
  *
- *   yarn hardhat run scripts/seed-pool.ts --network hederaTestnet -- --id 3 --split 20 --liquidity 10
+ *   ID=3 SPLIT=20 LIQUIDITY=10 yarn hardhat:seed-pool
  *
- * Splits `--split` HBAR, approves the SaucerSwap router on YES, then calls addLiquidityETHNewPool
- * with that many whole YES against `--liquidity` HBAR, plus the pool creation fee. The gas limit is
+ * Splits `SPLIT` HBAR, approves the SaucerSwap router on YES, then calls addLiquidityETHNewPool
+ * with that many whole YES against `LIQUIDITY` HBAR, plus the pool creation fee. The gas limit is
  * 9,000,000 because pool creation measured about 6.8 million gas on testnet. The creator keeps the
  * NO leg: seeding a pool is a position, and the NO tokens stay in the deployer account.
  */

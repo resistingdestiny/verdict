@@ -75,23 +75,23 @@ Environment variables. The app boots and every page renders with none of these s
 
 Copy each `.env.example` to `.env` (or `.env.local` in `packages/nextjs`) and fill in what you need. `.env` files are git-ignored; never commit one.
 
-Deploy:
+Deploy. Two paths, depending on the key you have:
+
+- You already hold a funded testnet key (for example from portal.hedera.com, as a `0x`-prefixed ECDSA private key): put it in `packages/hardhat/.env` as `DEPLOYER_PRIVATE_KEY` and skip the account scripts. The deploy and every hand-run script read that plain key without a password prompt.
+- You have no key yet: `yarn hardhat:account:generate` writes an encrypted key to `packages/hardhat/.env` and prints its address; fund that address at [portal.hedera.com](https://portal.hedera.com) before deploying. `yarn hardhat:deploy:testnet` then asks for the password.
 
 ```bash
-yarn hardhat:account:generate
-yarn hardhat:test
-yarn hardhat:deploy:testnet
+yarn hardhat:test            # 112 tests on local mocks, about 30 seconds
+yarn hardhat:deploy:testnet  # about 40 seconds and 5 HBAR
 ```
 
-`yarn hardhat:account:generate` writes the encrypted key to `packages/hardhat/.env`; use `yarn hardhat:account:import` to bring an existing key. The deploy script deploys `Verdict`, `ChainlinkResolver` and `VerdictRouter` and writes the addresses to `packages/nextjs/contracts/deployedContracts.ts`. When the operator credentials are set it also creates the HCS record topic and writes the topic id into `packages/nextjs/verdict.config.ts`; without them it skips that step, and you can create the topic later with `yarn record:create-topic`. Verify the contracts so HashScan shows their source:
+With npm, the same commands are `npm run hardhat:test` and `npm run hardhat:deploy:testnet`; the non-interactive scaffold command above picks npm. The deploy script deploys `Verdict`, `ChainlinkResolver` and `VerdictRouter` and rewrites `packages/nextjs/contracts/deployedContracts.ts` for chain 296, so the app now shows your deployment and your markets instead of the reference ones. When the operator credentials are set it also creates the HCS record topic and writes the topic id into `packages/nextjs/verdict.config.ts`; without them it skips that step, and you can create the topic later with `yarn record:create-topic`. Verify the contracts so HashScan shows their source:
 
 ```bash
-yarn hardhat:verify -- Verdict testnet
-yarn hardhat:verify -- ChainlinkResolver testnet
-yarn hardhat:verify -- VerdictRouter testnet
+yarn hardhat:verify-all      # Sourcify, idempotent, reads packages/hardhat/deployments
 ```
 
-`yarn hardhat:verify-all` verifies all three idempotently from the deployments folder.
+`yarn hardhat:verify-all` also appends rows to `docs/EVIDENCE.md` and `docs/COSTS.md` and keeps a checkpoint in `packages/hardhat/.testnet-run.json` (git-ignored); discard the docs changes if you do not want them. If the scaffold's dependency install fails, the usual causes are a full disk (the install needs about 2 GB) or a network blip; rerun `yarn install` (or `npm install --legacy-peer-deps` for an npm scaffold) in the project directory. If port 3000 is taken, start the app with `yarn next:dev -p 3010`.
 
 Create and seed a first market. The Create page at http://localhost:3000/create walks through it: it shows the live feed price, you pick a kind, bounds and an expiry, it estimates the cost, then it runs create, split, approve and seed in order. From the command line the same steps are three scripts, run from the repo root with their inputs as environment variables (the same form works under Yarn and npm):
 
@@ -103,7 +103,7 @@ ID=0 SPLIT=20 LIQUIDITY=10 yarn hardhat:seed-pool
 ID=0 TRADE=buyYes AMOUNT=1 yarn hardhat:trade
 ```
 
-`create-market` prints the market id, the YES and NO tokens and the resolution schedule, with HashScan links; use that id for `--id`. Bounds are human units, converted with the feed's decimals. `seed-pool` splits `--split` HBAR, seeds the pool with that many whole YES against `--liquidity` HBAR and pays the pool creation fee. `trade` runs any of the four trades with a 2 percent slippage bound. Two things to know before seeding: `createMarket` charges the two HTS token creation fees plus a resolution reserve and refunds the rest, and seeding the pool leaves the creator holding the NO leg, which is itself a position.
+`create-market` prints the market id, the YES and NO tokens and the resolution schedule, with HashScan links; a fresh deployment's first market is id 0, which you pass as `ID`. Bounds are human units, converted with the feed's decimals. `seed-pool` splits `SPLIT` HBAR, seeds the pool with that many whole YES against `LIQUIDITY` HBAR and pays the pool creation fee; it is silent for a few minutes while the relay confirms each step. `trade` runs any of the four trades with a 2 percent slippage bound. Measured on testnet: creating a market costs about 30 HBAR (45 HBAR are sent, the unused part is refunded), seeding a pool about 20 HBAR of creation fee plus the liquidity, a trade under 3 HBAR. Confirm the result with `curl http://localhost:3000/api/markets/0` or by opening `/market/0` in the running app. Two things to know before seeding: `createMarket` charges the two HTS token creation fees plus a resolution reserve and refunds the rest, and seeding the pool leaves the creator holding the NO leg, which is itself a position.
 
 ## How it works
 

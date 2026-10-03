@@ -5,8 +5,8 @@ import { parseArgs, requireArgs, hashscanTx, hashscanToken, WEIBARS_PER_TINYBAR 
 /**
  * Creates a Verdict market on Hedera testnet.
  *
- *   yarn hardhat run scripts/create-market.ts --network hederaTestnet -- \
- *     --feed HBAR/USD --kind Above --lower 0.10 --expiry 2026-10-09T16:00:00Z
+ *   FEED=HBAR/USD KIND=Above LOWER=0.10 EXPIRY=2026-10-09T16:00:00Z yarn hardhat:create-market
+ *   (flags of the same names also work when the script is run through hardhat directly)
  *
  * Bounds are human units, converted with the feed's decimals. Prints the market id, the YES and NO
  * tokens and the resolution schedule, with HashScan links.
@@ -58,7 +58,10 @@ async function main() {
       console.log(`Market id: ${parsed.args.id}`);
       console.log(`YES token: ${parsed.args.yes}  ${hashscanToken(parsed.args.yes)}`);
       console.log(`NO token:  ${parsed.args.no}  ${hashscanToken(parsed.args.no)}`);
-      console.log(`Schedule:  ${parsed.args.schedule}`);
+      const scheduleId = `0.0.${BigInt(parsed.args.schedule as string)}`;
+      console.log(
+        `Schedule:  ${parsed.args.schedule} (${scheduleId}) https://hashscan.io/testnet/schedule/${scheduleId}`,
+      );
       return;
     }
   }
