@@ -50,9 +50,15 @@ export type StepOutcome = {
   /** HashScan link for the evidence row. Defaults to the transaction link. */
   link?: string;
   /** Values the step wants to keep for later steps or the summary. Strings only, so the JSON stays plain. */
-  data?: Record<string, string>;
+  data?: Record<string, string | undefined>;
   /** Leave out the cost row (for steps that paid nothing, such as a balance reading). */
   noCost?: boolean;
+  /** Checkpoint only: write no docs rows at all. */
+  noEvidence?: boolean;
+  /** Already-known mirror values, for a transaction this account did not send (a scheduled execution). */
+  transactionId?: string;
+  gasUsed?: number;
+  chargedTinybars?: string;
 };
 
 export type StepRecord = StepOutcome & {
@@ -60,9 +66,6 @@ export type StepRecord = StepOutcome & {
   title: string;
   completedAt: string;
   /** Filled by the mirror lookup on flush. */
-  transactionId?: string;
-  gasUsed?: number;
-  chargedTinybars?: string;
   recordCount?: number;
   /** True once the rows exist in the docs. */
   written: boolean;
@@ -166,6 +169,11 @@ export class Ledger {
   async flush(force = false): Promise<void> {
     for (const record of this.records()) {
       if (record.written) continue;
+      if (record.noEvidence) {
+        record.written = true;
+        this.save();
+        continue;
+      }
       if (record.txHash && !record.transactionId) {
         try {
           const evidence = await transactionEvidence(record.txHash);
@@ -197,7 +205,7 @@ export class Ledger {
       EVIDENCE_HEADER,
       `| ${record.title} | ${link} | ${txId} | ${date} |`,
     );
-    if (record.txHash && !record.noCost) {
+    if ((record.txHash || record.transactionId) && !record.noCost) {
       const gas = record.gasUsed !== undefined ? record.gasUsed.toLocaleString("en-US") : "pending";
       const hbar = record.chargedTinybars !== undefined ? formatHbar(BigInt(record.chargedTinybars)) : "pending";
       const records = record.recordCount && record.recordCount > 1 ? ` (${record.recordCount} records)` : "";
