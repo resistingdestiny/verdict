@@ -64,11 +64,24 @@ The lifecycle tests enumerate kinds; where they do, add Outside so it gets a ful
 
 ## 4. The label
 
-`packages/nextjs/lib/payoff.ts` turns a kind, its bounds and the feed description into the question text and short labels the app shows. Add the Outside case so a market reads, for example, "HBAR / USD outside 0.10 to 0.12". The lib has unit tests; add the Outside rows there.
+`packages/nextjs/lib/payoff.ts` mirrors the contract's payoff so the app can label markets and draw diagrams without a contract call. Add Outside in each place the kinds are enumerated:
+
+- the `Kind` const (`Outside: 4`), the `KINDS` list, `KIND_LABELS` and `KIND_DESCRIPTIONS`
+- `kindUsesUpper`: Outside has two bounds, like Between and Scalar
+- the `payoutFor` switch, with the same rule as the contract branch:
+
+```typescript
+case Kind.Outside:
+  return answer < lower || answer >= upper ? PAYOUT_SCALE : 0n;
+```
+
+- the `conditionText` switch, for example `be outside ${lo} and ${hi}`, which makes `questionText` read "Will HBAR / USD be outside 0.10 and 0.12 at 9 Oct 2026, 16:00 UTC?"
+
+The lib's unit tests live in `packages/nextjs/lib/__tests__/`; add the Outside rows there and run `yarn next:test`.
 
 ## 5. The payoff diagram
 
-`packages/nextjs/components/PayoffDiagram.tsx` draws what YES and NO pay across the price range, as plain SVG with no chart library. Add the Outside shape: YES pays 1 HBAR below the lower bound and from the upper bound up, nothing between them. `docs/img/payoff-between.svg` is the same shape inverted and shows the coordinates to reuse.
+`packages/nextjs/components/PayoffDiagram.tsx` samples `payoffPoints` from `lib/payoff.ts` across the price range, so the new `payoutFor` branch already draws the right shape: YES pays 1 HBAR below the lower bound and from the upper bound up, nothing between them. The one edit left in the component is the bound-marker condition, which currently marks the upper bound only for Between and Scalar; extend it so Outside's upper bound is marked too. `docs/img/payoff-between.svg` shows the same shape inverted.
 
 ## 6. Check and finish
 

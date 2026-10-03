@@ -25,8 +25,8 @@ Five touches, walked through in `docs/TUTORIAL.md`:
 1. Append `Outside` to the `Kind` enum in `packages/hardhat/contracts/interfaces/IVerdict.sol`, after `Scalar`. Append only: enum order is storage layout.
 2. Add the payoff branch to the pure payoff function in `packages/hardhat/contracts/Verdict.sol`: `answer < lower || answer >= upper` pays in full (100,000,000 tinybars per whole token), otherwise zero.
 3. Add a payoff table test in `packages/hardhat/test/Verdict.test.ts`, driven through the `payoutFor` view, covering each bound, a value just either side of each bound, and a midpoint.
-4. Add the Outside case to the labels in `packages/nextjs/lib/payoff.ts`, so a market reads for example "HBAR / USD outside 0.10 to 0.12", with rows in the lib's unit tests.
-5. Add the Outside shape to `packages/nextjs/components/PayoffDiagram.tsx`: YES pays 1 HBAR below the lower bound and from the upper bound up, nothing between them.
+4. Add Outside to `packages/nextjs/lib/payoff.ts` in each place the kinds are enumerated: the `Kind` const, `KINDS`, `KIND_LABELS`, `KIND_DESCRIPTIONS`, `kindUsesUpper`, the `payoutFor` switch (same rule as the contract) and `conditionText`, so a market reads for example "Will HBAR / USD be outside 0.10 and 0.12 at 9 Oct 2026, 16:00 UTC?". Add rows to the lib's unit tests under `packages/nextjs/lib/__tests__/`.
+5. Extend the bound-marker condition in `packages/nextjs/components/PayoffDiagram.tsx` so Outside's upper bound is marked; the diagram itself samples `payoffPoints`, so the new branch in `lib/payoff.ts` already gives the right shape.
 
 Edge cases that decide correctness: `answer == upper` pays Outside in full and `answer == lower` pays it nothing, so Outside and Between stay complements. Where the lifecycle tests enumerate kinds, add Outside so it gets a full create, split, settle and redeem run.
 

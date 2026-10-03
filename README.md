@@ -56,6 +56,7 @@ Environment variables. The app boots and every page renders with none of these s
 | `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | `packages/nextjs/.env.local` | Optional | WalletConnect project id for wallet connections |
 | `NEXT_PUBLIC_HEDERA_TESTNET_RPC_URL` | `packages/nextjs/.env.local` | Optional | RPC override for the frontend |
 | `NEXT_PUBLIC_HEDERA_MAINNET_RPC_URL` | `packages/nextjs/.env.local` | Optional | RPC override for the frontend |
+| `NEXT_PUBLIC_MIRROR_NODE_URL` | `packages/nextjs/.env.local` | Optional | Mirror node override; the public mirror node for the target network is the default |
 
 Copy each `.env.example` to `.env` (or `.env.local` in `packages/nextjs`) and fill in what you need. `.env` files are git-ignored; never commit one.
 
@@ -144,7 +145,7 @@ All four kinds share one mechanism; only the payoff rule differs. Bounds are sto
 | Hedera Token Service (HTS) | Creates the YES and NO tokens for every market, mints on split, burns on merge and redeem. The contract is treasury and holds the only supply key; there are no admin, freeze, KYC, wipe, pause or fee keys. | `packages/hardhat/contracts/Verdict.sol` |
 | Hedera Schedule Service (HSS) | Each market schedules its own `resolveScheduled` call at creation; the scheduled call fires at the expiry second with no keeper and no account sending it. | `packages/hardhat/contracts/Verdict.sol`, `packages/hardhat/contracts/interfaces/IHederaScheduleService.sol` |
 | Hedera Consensus Service (HCS) | One topic is the public record of every market's terms and settlement, written from chain data and readable by anyone. | `packages/nextjs/app/api/record`, `packages/hardhat/scripts/record-sync.ts` |
-| Mirror node | Serves every read the app cannot get from contract views: the record feed, odds history from pool events and the transaction lookups behind HashScan links. | `packages/nextjs/lib/mirror.ts` |
+| Mirror node | Serves every read the app cannot get from contract views: odds history from the pool's `Sync` events, association checks, the record feed and the transaction data behind record messages. | `packages/nextjs/lib/odds.ts`, `packages/nextjs/app/api/record` |
 
 ## Why each integration is load-bearing
 

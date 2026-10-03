@@ -29,7 +29,7 @@ packages/
                                 /api/*, /llms.txt
     components/
     contracts/deployedContracts.ts   committed reference testnet deployment
-    lib/                        mirror.ts, odds.ts, payoff.ts, format.ts
+    lib/                        feeds, format, hts, odds, payoff, verdict
 docs/                           ARCHITECTURE, TUTORIAL, SECURITY, COSTS, EVIDENCE, DECISIONS
 .harness/                       Hedera Harness recipe (spec, PRD, validators)
 .github/workflows/              ci.yml, fresh-scaffold.yml
@@ -58,8 +58,10 @@ yarn next:start
 
 # Quality
 yarn lint                                # frontend and contracts
+yarn format
 yarn next:lint --max-warnings=0
 yarn next:check-types
+yarn next:test                           # frontend unit tests (vitest)
 yarn hardhat:lint --max-warnings=0
 yarn hardhat:check-types
 yarn hardhat:compile
@@ -126,7 +128,7 @@ Five touches, all mechanical. The full walkthrough is `docs/TUTORIAL.md`.
 All of these pass, from a clean tree:
 
 - `yarn hardhat:compile`, `yarn hardhat:test`, `yarn hardhat:lint --max-warnings=0`, `yarn hardhat:check-types`
-- `yarn next:lint --max-warnings=0`, `yarn next:check-types`, `yarn next:build`
+- `yarn next:lint --max-warnings=0`, `yarn next:check-types`, `yarn next:test`, `yarn next:build`
 - `node scripts/check-readme-scripts.mjs`
 - The contract invariants hold in the test suite, including the property tests
 - Docs updated for any behaviour that changed; a troubleshooting row added for anything that broke and was understood

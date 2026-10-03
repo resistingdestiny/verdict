@@ -48,10 +48,6 @@
       "contains": ["Outside"]
     },
     {
-      "file": "packages/nextjs/components/PayoffDiagram.tsx",
-      "contains": ["Outside"]
-    },
-    {
       "file": "README.md",
       "contains": ["yarn hardhat:test"]
     }

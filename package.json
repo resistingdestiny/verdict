@@ -34,6 +34,7 @@
     "next:lint": "yarn workspace @sh/nextjs lint",
     "next:serve": "yarn workspace @sh/nextjs serve",
     "next:start": "yarn workspace @sh/nextjs start",
+    "next:test": "yarn workspace @sh/nextjs test",
     "postinstall": "husky",
     "precommit": "lint-staged",
     "lint-staged": "lint-staged"
@@ -45,5 +46,11 @@
   },
   "engines": {
     "node": ">=20.18.3"
+  },
+  "resolutions": {
+    "@coinbase/cdp-sdk": "1.44.1"
+  },
+  "overrides": {
+    "@coinbase/cdp-sdk": "1.44.1"
   }
 }
