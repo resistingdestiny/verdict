@@ -14,6 +14,10 @@ Each entry is a decision the brief left open, a spike finding, or a cut, with on
 | 2026-10-02 | `IResolver` gains `feedDecimals(bytes32)` beyond the brief's two functions. | `createMarket` records the feed's decimals at creation and must learn them from the resolver, not from the caller. |
 | 2026-10-02 | The YES payout is a `uint64` of tinybars per whole token, 0 to 100,000,000. | Matches the brief's representation and fits the `int64` HTS boundary. |
 | 2026-10-02 | `MAX_LEAD` starts at 62 days pending spike 2. | HAPI long-term schedules expire at most about two months ahead; the furthest judged market is 28 days out. |
+| 2026-10-02 | The README references a screenshot at `docs/img/home.png` that the Playwright stream will save. | The brief requires one screenshot in the README and says the Playwright run saves the screenshots the README uses; the file lands with that stream. |
+| 2026-10-02 | `docs/TROUBLESHOOTING.md` is seeded with the rows already known and will be folded into the README at the end. | common.md has every stream add rows as things break, and the docs stream merges them into the README troubleshooting table. |
+| 2026-10-02 | The Harness recipe's deterministic check is a Node script wired into `validators/yarn.json`, alongside the harness's own `static.json`. | The workstream brief asks for a Node script; the harness format runs arbitrary commands, so the script is one of them. |
+| 2026-10-02 | `harness:doctor` and `harness:validate` root scripts are not added; the README describes the `npx hedera-harness` commands instead. | `hedera-harness` is not installed and installs are forbidden in the workstreams; the lead adds it as a dev dependency. |
 
 ## Spike findings
 
