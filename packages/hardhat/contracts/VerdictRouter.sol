@@ -42,7 +42,12 @@ contract VerdictRouter is IVerdictRouter {
         IVerdict.Market memory m = _marketOf(id);
         _poolOf(id, m.yes);
         address[] memory path = _path(whbar, m.yes);
-        uint256[] memory amounts = saucerRouter.swapExactETHForTokens{ value: msg.value }(0, path, msg.sender, deadline);
+        uint256[] memory amounts = saucerRouter.swapExactETHForTokens{ value: msg.value }(
+            0,
+            path,
+            msg.sender,
+            deadline
+        );
         yesOut = amounts[1];
         if (yesOut < minYesOut) revert Slippage(minYesOut, yesOut);
         emit Traded(id, msg.sender, Trade.BuyYes, msg.value, yesOut, 0);
@@ -111,6 +116,7 @@ contract VerdictRouter is IVerdictRouter {
         if (msg.value < needed) revert InsufficientValue(needed, msg.value);
         _ensureAssociated(m.yes);
         _ensureAssociated(m.no);
+        // slither-disable-next-line unused-return
         saucerRouter.swapETHForExactTokens{ value: needed }(noIn, path, address(this), deadline);
         _pullFromUser(m.no, noIn);
         _approveHts(m.yes, address(verdict), noIn);
@@ -136,11 +142,13 @@ contract VerdictRouter is IVerdictRouter {
     function reserves(uint256 id) public view returns (uint256 yesReserve, uint256 hbarReserve) {
         address pair = pairOf(id);
         if (pair == address(0)) return (0, 0);
+        // slither-disable-next-line unused-return
         (uint112 reserve0, uint112 reserve1, ) = ISaucerSwapPair(pair).getReserves();
         address yes = _marketOf(id).yes;
-        return ISaucerSwapPair(pair).token0() == yes
-            ? (uint256(reserve0), uint256(reserve1))
-            : (uint256(reserve1), uint256(reserve0));
+        return
+            ISaucerSwapPair(pair).token0() == yes
+                ? (uint256(reserve0), uint256(reserve1))
+                : (uint256(reserve1), uint256(reserve0));
     }
 
     /// @inheritdoc IVerdictRouter

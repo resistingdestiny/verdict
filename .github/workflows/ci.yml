@@ -59,6 +59,116 @@ jobs:
       - name: template.json is valid
         run: node scripts/check-template-json.mjs
 
+  property:
+    name: Property tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install
+        run: yarn install --immutable
+
+      - name: Compile contracts
+        run: yarn hardhat:compile
+
+      - name: Property tests (200 sequences in CI, 1000 by default locally)
+        run: yarn hardhat:test:property
+        env:
+          VERDICT_PROPERTY_RUNS: 200
+          REPORT_GAS: false
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install
+        run: yarn install --immutable
+
+      - name: Coverage (summary printed, nothing uploaded)
+        run: yarn hardhat:coverage
+
+  slither:
+    name: Slither
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install
+        run: yarn install --immutable
+
+      - name: Slither
+        uses: crytic/slither-action@v0.4.0
+        with:
+          target: packages/hardhat
+          slither-config: slither.config.json
+          slither-args: --filter-paths "node_modules|mocks|spikes"
+          fail-on: medium
+          solc-version: 0.8.28
+          node-version: 20.18.3
+
+  e2e:
+    name: Playwright routes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install
+        run: yarn install --immutable
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: packages/nextjs
+
+      - name: Build frontend
+        run: yarn next:build
+
+      - name: Routes in both themes at desktop and phone widths
+        run: yarn next:test:e2e
+        env:
+          CI: true
+
   gitleaks:
     name: Secrets scan over full history
     runs-on: ubuntu-latest

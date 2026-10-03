@@ -114,6 +114,7 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         pendingReserves += RESOLUTION_RESERVE;
 
         uint256 charge = _createTokens(m, id) + RESOLUTION_RESERVE;
+        // slither-disable-next-line reentrancy-eth
         m.schedule = _schedule(id, expiry);
         _emitCreated(id, m);
 
@@ -281,6 +282,7 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
     function _reading(
         Market storage m
     ) private view returns (bool ok, int256 answer, uint80 roundId, uint64 updatedAt) {
+        // slither-disable-next-line unused-return
         try IResolver(m.resolver).readingAt(m.feedId, m.expiry) returns (
             bool ok_,
             int256 answer_,
@@ -315,6 +317,7 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         string memory suffix = _decimal(id);
         uint256 balanceBefore = address(this).balance;
         m.yes = _createToken(string.concat("Verdict YES ", suffix), string.concat("VYES", suffix));
+        // slither-disable-next-line reentrancy-eth
         m.no = _createToken(string.concat("Verdict NO ", suffix), string.concat("VNO", suffix));
         return balanceBefore - address(this).balance;
     }
@@ -415,6 +418,7 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
     /// @dev Mints `amount` to the treasury (this contract) and transfers it on to `to`.
     function _mintTo(address token, address to, uint256 amount) private {
         int64 units = int64(uint64(amount));
+        // slither-disable-next-line unused-return
         (int64 code, , ) = HTS.mintToken(token, units, new bytes[](0));
         _checkHts(code, token);
         _checkHts(HTS.transferToken(token, address(this), to, units), token);
@@ -423,6 +427,7 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
     /// @dev Pulls `amount` from `from` through the caller's HTS allowance to this contract, then burns it.
     function _pullAndBurn(address token, address from, uint256 amount) private {
         _checkHts(HTS.transferFrom(token, from, address(this), amount), token);
+        // slither-disable-next-line unused-return
         (int64 code, ) = HTS.burnToken(token, int64(uint64(amount)), new int64[](0));
         _checkHts(code, token);
     }
@@ -436,7 +441,7 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
     ///      its 5.6 line needs a Cancun EVM target and the scaffold compiles for paris.
     function _decimal(uint256 value) private pure returns (string memory) {
         if (value == 0) return "0";
-        uint256 length;
+        uint256 length = 0;
         for (uint256 v = value; v != 0; v /= 10) length++;
         bytes memory buffer = new bytes(length);
         for (uint256 v = value; v != 0; v /= 10) {

@@ -8,6 +8,7 @@
     "account:reveal-pk": "hardhat run scripts/revealPK.ts",
     "chain": "hardhat node --network hardhat --no-deploy",
     "check-types": "tsc --noEmit --incremental",
+    "coverage": "REPORT_GAS=false hardhat coverage",
     "clean": "hardhat clean",
     "compile": "hardhat compile",
     "deploy": "ts-node scripts/runHardhatDeployWithPK.ts",
@@ -19,6 +20,7 @@
     "lint-staged": "eslint",
     "reference-deployment": "hardhat run scripts/reference-deployment.ts --network hederaTestnet",
     "test": "hardhat test",
+    "test:property": "VERDICT_PROPERTY=1 hardhat test test/Invariants.property.test.ts",
     "verify-all": "ts-node scripts/verify-all.ts",
     "verify:contract": "ts-node scripts/verifySourcify.ts"
   },
