@@ -6,6 +6,7 @@
     "build": "next build",
     "check-types": "tsc --noEmit --incremental",
     "dev": "next dev",
+    "record:create-topic": "node scripts/create-topic.mjs",
     "format": "prettier --write . '!(node_modules|.next|contracts)/**/*'",
     "lint": "next lint",
     "serve": "next start",

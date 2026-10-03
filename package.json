@@ -36,6 +36,7 @@
     "next:start": "yarn workspace @sh/nextjs start",
     "postinstall": "husky",
     "precommit": "lint-staged",
+    "record:create-topic": "yarn workspace @sh/nextjs record:create-topic",
     "lint-staged": "lint-staged"
   },
   "packageManager": "yarn@3.2.3",
