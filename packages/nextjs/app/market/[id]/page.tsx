@@ -58,7 +58,7 @@ const MarketPage: NextPage<MarketPageProps> = ({ params }) => {
     fetch("/api/record", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ market: Number(id) }),
+      body: JSON.stringify({ marketId: Number(id) }),
     }).catch((reason: unknown) => console.warn("record sync skipped:", reason));
   }, [settled, id]);
 

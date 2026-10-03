@@ -38,7 +38,10 @@
     "postinstall": "husky",
     "precommit": "lint-staged",
     "record:create-topic": "yarn workspace @sh/nextjs record:create-topic",
-    "lint-staged": "lint-staged"
+    "lint-staged": "lint-staged",
+    "hardhat:e2e-testnet": "yarn workspace @sh/hardhat e2e-testnet",
+    "hardhat:reference-deployment": "yarn workspace @sh/hardhat reference-deployment",
+    "hardhat:verify-all": "yarn workspace @sh/hardhat verify-all"
   },
   "packageManager": "yarn@3.2.3",
   "devDependencies": {

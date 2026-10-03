@@ -28,3 +28,6 @@ deployments
 
 # other
 temp
+
+# testnet run checkpoint (scripts/lib/evidence.ts)
+.testnet-run.json
