@@ -7,13 +7,12 @@ import * as path from "path";
 import { ethers } from "ethers";
 
 import {
-  evmToAccountId,
   evmToContractId,
   evmToHederaId,
   getAllContractLogs,
   getAllTopicMessages,
   getContractResultByHash,
-  toTransactionId,
+  transactionIdAt,
 } from "../../nextjs/lib/mirror";
 
 /**
@@ -153,8 +152,7 @@ function loadInterfaceAbi(name: string): ethers.InterfaceAbi {
 
 async function transactionIdFor(txHash: string): Promise<string | null> {
   const result = await getContractResultByHash(txHash, { baseUrl: MIRROR_BASE_URL });
-  const payer = await evmToAccountId(result.from, { baseUrl: MIRROR_BASE_URL });
-  return payer ? toTransactionId(payer, result.timestamp) : null;
+  return transactionIdAt(result.timestamp, { baseUrl: MIRROR_BASE_URL });
 }
 
 async function findEventHash(contractAddress: string, signature: string, marketId: bigint): Promise<string | null> {
@@ -217,7 +215,7 @@ async function buildMarketCreated(id: bigint, market: MarketView, verdictAddress
 }
 
 async function buildMarketSettled(id: bigint, market: MarketView, verdictAddress: string): Promise<RecordMessage> {
-  const isVoid = market.status === 2;
+  const isVoid = Number(market.status) === 2;
   const txHash = await findEventHash(verdictAddress, isVoid ? VOIDED_SIG : RESOLVED_SIG, id);
   return {
     v: 1,
@@ -299,7 +297,7 @@ async function syncDirect(topicId: string, operatorId: string, operatorKey: stri
       const market = (await verdict.getMarket(i)) as unknown as MarketView;
       const pending: RecordMessage[] = [];
       if (!keys.has(`market_created:${i}`)) pending.push(await buildMarketCreated(i, market, verdictAddress));
-      if ((market.status === 1 || market.status === 2) && !keys.has(`market_settled:${i}`)) {
+      if ((Number(market.status) === 1 || Number(market.status) === 2) && !keys.has(`market_settled:${i}`)) {
         pending.push(await buildMarketSettled(i, market, verdictAddress));
       }
       for (const message of pending) {

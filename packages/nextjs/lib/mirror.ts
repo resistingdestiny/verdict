@@ -285,6 +285,22 @@ export async function evmToHederaId(evmAddress: string, options: MirrorOptions =
  * Build the `0.0.x@seconds.nanoseconds` transaction id used by HashScan from the payer account id
  * and a mirror timestamp (ISO string as on contract results, or `seconds.nanos` as on messages).
  */
+/**
+ * The Hedera transaction id (`0.0.x@seconds.nanos`) of the transaction at a mirror consensus timestamp.
+ * An EVM transaction relayed through the JSON-RPC relay is paid by the relay's own account with its own
+ * valid-start time, so the id cannot be derived from the EVM sender; the mirror node finds it by timestamp.
+ */
+export async function transactionIdAt(timestamp: string, options: MirrorOptions = {}): Promise<string | null> {
+  const data = await mirrorGet<{ transactions: { transaction_id: string }[] }>(
+    `/api/v1/transactions?timestamp=${timestamp}`,
+    options,
+  );
+  const id = data.transactions?.[0]?.transaction_id;
+  if (!id) return null;
+  const [payer, seconds, nanos] = id.split("-");
+  return `${payer}@${seconds}.${nanos}`;
+}
+
 export function toTransactionId(accountId: string, timestamp: string): string {
   let seconds: string;
   let nanos: string;

@@ -17,13 +17,12 @@ import {
 import { DeployedContract, RESOLVER_ABI, getDeployedContract, verdictPublicClient } from "~~/app/api/_lib/verdict";
 import {
   MirrorError,
-  evmToAccountId,
   evmToContractId,
   evmToHederaId,
   getAllContractLogs,
   getAllTopicMessages,
   getContractResultByHash,
-  toTransactionId,
+  transactionIdAt,
 } from "~~/lib/mirror";
 import verdictConfig from "~~/verdict.config";
 
@@ -65,8 +64,7 @@ function operatorPrivateKey(key: string): PrivateKey {
 
 async function transactionIdFor(txHash: string): Promise<string | null> {
   const result = await getContractResultByHash(txHash, { baseUrl: verdictConfig.mirrorNodeUrl });
-  const payer = await evmToAccountId(result.from, { baseUrl: verdictConfig.mirrorNodeUrl });
-  return payer ? toTransactionId(payer, result.timestamp) : null;
+  return transactionIdAt(result.timestamp, { baseUrl: verdictConfig.mirrorNodeUrl });
 }
 
 async function feedName(resolver: string, feedId: `0x${string}`): Promise<string | null> {
