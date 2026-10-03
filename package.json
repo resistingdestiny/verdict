@@ -37,6 +37,7 @@
     "next:serve": "yarn workspace @sh/nextjs serve",
     "next:start": "yarn workspace @sh/nextjs start",
     "next:test": "yarn workspace @sh/nextjs test",
+    "next:test:e2e": "yarn workspace @sh/nextjs test:e2e",
     "postinstall": "husky",
     "precommit": "lint-staged",
     "record:create-topic": "yarn workspace @sh/nextjs record:create-topic",
