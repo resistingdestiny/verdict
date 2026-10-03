@@ -1,0 +1,13 @@
+# Troubleshooting
+
+Problems hit during the build, what caused them and what to do. The docs stream folds this table into the README.
+
+| What you see | Why | What to do |
+| --- | --- | --- |
+| `TypeError: The "mcopy" instruction is only available for Cancun-compatible VMs` when compiling anything that imports `@openzeppelin/contracts/utils/Strings.sol` | OpenZeppelin 5.6 `Strings` pulls in `Bytes.sol`, which uses `mcopy`; the scaffold compiles for the paris EVM target because Hedera does not support Cancun opcodes | Do not import `Strings`. `Verdict.sol` renders token names with its own 10-line `_decimal` helper. `Ownable` and `ReentrancyGuard` are unaffected |
+| `yarn hardhat:test` is slow to start and prints a block number in the tens of millions | `networks.hardhat.forking.url` is set in `hardhat.config.ts`, so the in-process network forks Hedera testnet through hashio on every run even though the tests only use the mocks at `0x167` and `0x16b` | The tests pass either way. To run them offline, set `forking.enabled` to `process.env.HEDERA_FORKING === "true"` in `hardhat.config.ts` |
+| `yarn hardhat:test some/path.test.ts` says `Cannot find module .../packages/hardhat/packages/hardhat/...` | The root script runs inside `packages/hardhat`, so test paths are relative to that package | `yarn hardhat:test test/Verdict.test.ts` |
+| `NotAssociated(token)` from `split` or a router trade | The recipient has never associated with the outcome token and has no free automatic association slot (HTS codes 184 and 262) | Associate first: call `associate()` on the token address (HIP-719), or set unlimited automatic associations on the account. On the local mocks, `MockHederaTokenService.setAutoAssociationSlots(account, MaxUint256)` does what a wallet setting does |
+| `HtsError(292)` or `HtsError(293)` from `merge` or `redeem` | Verdict pulls tokens through an HTS allowance; 292 is no allowance, 293 is an allowance smaller than the amount | Approve Verdict on both YES and NO for at least the amount, through the token's ERC-20 `approve` or HTS `approve` |
+| `ExpiryTooSoon(expiry, earliest)` with `earliest` one second later than expected | The lead is measured from the block the creation transaction lands in, which is one second after the latest block on Hardhat | Add a margin to the expiry when scripting |
+| `ScheduleFailed(id, code)` in the creation receipt and `schedule` is `address(0)` | HSS refused the schedule (code 306 too far, 370 every probed second busy, or a forced test code). The market is still valid | Anyone can call `resolve(id)` at or after expiry. Nothing else changes |

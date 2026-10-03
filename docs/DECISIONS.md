@@ -14,6 +14,18 @@ Each entry is a decision the brief left open, a spike finding, or a cut, with on
 | 2026-10-02 | `IResolver` gains `feedDecimals(bytes32)` beyond the brief's two functions. | `createMarket` records the feed's decimals at creation and must learn them from the resolver, not from the caller. |
 | 2026-10-02 | The YES payout is a `uint64` of tinybars per whole token, 0 to 100,000,000. | Matches the brief's representation and fits the `int64` HTS boundary. |
 | 2026-10-02 | `MAX_LEAD` starts at 62 days pending spike 2. | HAPI long-term schedules expire at most about two months ahead; the furthest judged market is 28 days out. |
+| 2026-10-02 | `Verdict.sol` renders token names with a private `_decimal` helper instead of OpenZeppelin `Strings`. | OZ 5.6 `Strings` imports `Bytes.sol`, which needs the Cancun `mcopy` opcode, and the scaffold compiles for paris. |
+| 2026-10-02 | `getMarket` reverts `NoSuchMarket` for an unknown id rather than returning an empty struct. | One decoded reason everywhere; callers check `marketCount` first. |
+| 2026-10-02 | `split` after expiry reverts `MarketNotOpen`, the same error as a settled market. | The frozen interface has no separate expired error, and after expiry the market is closed to new collateral either way. |
+| 2026-10-02 | HTS codes 184 and 262 both surface as `NotAssociated(token)`. | Both mean the recipient cannot receive the token without associating; the fix for the user is the same. |
+| 2026-10-02 | HSS failures never revert `createMarket`: the code goes into `ScheduleFailed` and the market stays usable through `resolve`. `HssError` from the interface is therefore unused. | A missing schedule costs a manual `resolve`; a reverting creation would cost the whole market. |
+| 2026-10-02 | `resolveScheduled` records `settledBySchedule = true` whoever calls it; humans should call `resolve`. | The schedule's sender address is unconfirmed until spike 2, so the function cannot be gated by caller. |
+| 2026-10-02 | The shared settlement path returns a small enum; `resolve` maps it to custom errors and `resolveScheduled` to reason strings. | Same logic in one place with typed errors on the reverting path. |
+| 2026-10-02 | `merge` and `redeem` reject amounts larger than the market's collateral with `AmountTooLarge` before touching HTS. | Keeps the state update ahead of the external calls without ever hitting an arithmetic panic. |
+| 2026-10-02 | A resolver that reverts counts as "no fresh reading" for `resolve`, `resolveScheduled` and `voidMarket`. | A broken oracle must take the void path, never brick the market with a raw revert. |
+| 2026-10-02 | `hardhat.config.ts` is left forking Hedera testnet during `yarn hardhat:test`; the core tests pass either way. | The file belongs to the lead; the one-line `forking.enabled` toggle is requested in the core report. |
+| 2026-10-02 | The local deploy gives every Hardhat account unlimited automatic associations on the HTS mock and splits 20 HBAR into each of three sample markets. | A wallet with unlimited automatic associations is the normal Hedera setup, and the app needs data before anyone trades. |
+| 2026-10-02 | `MockHtsToken` gains the HIP-719 `associate()` and `isAssociated()` facade. | The frontend's one-click associate calls the token address on Hedera, so the mock must answer it too. |
 
 ## Spike findings
 
