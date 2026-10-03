@@ -1,122 +1,135 @@
 # Agent instructions
 
-Briefing for coding agents in this app (Cursor, Claude Code, Codex). Claude Code loads it through `CLAUDE.md`.
+Briefing for coding agents in this repo. Claude Code loads it through `CLAUDE.md`.
 
-This is a Scaffold-HBAR dApp: Next.js App Router, wallet connect, Debug Contracts, and Hedera networks (testnet, mainnet, local fork). The CLI may have left only Hardhat or only Foundry.
+Verdict is a Scaffold-HBAR template for outcome markets on Hedera. A question about a price becomes two HTS tokens, YES and NO, whose payouts always add up to 1 HBAR. A SaucerSwap pool prices them, a Chainlink feed settles them, and the Hedera Schedule Service resolves each market with no keeper.
 
-Use the package manager this project was created with (`packageManager` in the root `package.json`, or the lockfile). Examples use `yarn`; if the app was created with npm, swap `yarn <script>` for `npm run <script>`.
+The stack: Next.js App Router, Hardhat with hardhat-deploy, Yarn workspaces (npm also works), Node 20.18.3 or later. Hedera testnet, Hedera mainnet config, and a local fork. There is no Foundry package.
 
-## Which Solidity package
+## Repo map
 
-- `packages/hardhat` exists → Hardhat (`hardhat-deploy`)
-- `packages/foundry` exists → Foundry (Forge scripts)
-- `packages/nextjs` is always the frontend (App Router, RainbowKit, Wagmi, Viem, DaisyUI)
+```text
+packages/
+  hardhat/
+    contracts/
+      Verdict.sol               markets, outcome tokens, collateral, settlement, redemption
+      VerdictRouter.sol         four trades in one transaction each; stateless, holds nothing
+      VerdictSeries.sol         stretch: a self-running market series
+      interfaces/               IVerdict.sol, IResolver.sol, IVerdictRouter.sol (frozen)
+      resolvers/                ChainlinkResolver.sol, GuardedResolver.sol (stretch)
+      mocks/                    HTS, HSS and Chainlink test doubles
+      libraries/HederaCodes.sol HAPI response codes used at the system contract boundary
+    config/addresses.ts         the only file with hard-coded external addresses
+    deploy/                     hardhat-deploy scripts; also creates the HCS topic
+    scripts/                    spikes/, create-market, seed-pool, e2e-testnet,
+                                record-sync, agent-trade, evidence
+    test/                       unit tests, helpers/hedera.ts installs the mocks
+  nextjs/
+    app/                        /, /market/[id], /create, /portfolio, /record,
+                                /api/*, /llms.txt
+    components/
+    contracts/deployedContracts.ts   committed reference testnet deployment
+    lib/                        mirror.ts, odds.ts, payoff.ts, format.ts
+docs/                           ARCHITECTURE, TUTORIAL, SECURITY, COSTS, EVIDENCE, DECISIONS
+.harness/                       Hedera Harness recipe (spec, PRD, validators)
+.github/workflows/              ci.yml, fresh-scaffold.yml
+template.json                   scaffold manifest
+```
 
-Follow only the flavor that is present.
+Three layout rules:
+
+- The frontend learns every external address from the deployed contracts. `packages/hardhat/config/addresses.ts` is the only file with hard-coded external addresses, and each entry carries its source URL and the date it was checked.
+- `deployedContracts.ts` is committed with the reference testnet deployment, so a fresh scaffold shows live markets before the developer deploys anything.
+- Every package has an `.env.example`. The app boots and every route renders with no environment variables set.
 
 ## Commands
 
-Package-prefixed scripts for package-specific work. Keep only truly cross-workspace commands unprefixed.
+Run from the repo root. Use `npm run <script>` instead of `yarn <script>` when the project was scaffolded with npm.
 
 ```bash
-# Local chain + deploy + frontend (separate terminals)
-yarn hardhat:chain    # Hedera-forked Hardhat node on 8545
-yarn hardhat:deploy --network localhost
-yarn foundry:chain    # Anvil from the Foundry package
-yarn foundry:deploy
-yarn next:start       # http://localhost:3000
-
-# Frontend only
+# Install and start the frontend (shows the committed testnet deployment)
+yarn install
 yarn next:dev
 
-# Quality / build
-yarn lint
-yarn format
-yarn next:build
-yarn hardhat:compile
-yarn foundry:compile
+# Local chain, deploy, frontend (separate terminals)
+yarn hardhat:chain                       # Hedera-forked Hardhat node on 8545
+yarn hardhat:deploy --network localhost  # deploy to the running fork
+yarn next:start
 
-# Live networks
-yarn hardhat:deploy --network hederaTestnet   # or hederaMainnet
-yarn foundry:deploy --network hedera_testnet  # or hedera_mainnet
-yarn hardhat:verify -- HederaToken testnet [0xAddress]
-yarn foundry:verify:testnet
+# Quality
+yarn lint                                # frontend and contracts
+yarn next:lint --max-warnings=0
+yarn next:check-types
+yarn hardhat:lint --max-warnings=0
+yarn hardhat:check-types
+yarn hardhat:compile
+yarn hardhat:test                        # whole contract suite
+yarn hardhat:test test/Verdict.test.ts   # one file while iterating
+yarn next:build
 
 # Deployer account
 yarn hardhat:account:generate
 yarn hardhat:account:import
 yarn hardhat:account
+
+# Live networks (never mainnet for this template)
+yarn hardhat:deploy --network hederaTestnet
+yarn hardhat:verify -- Verdict testnet [0xAddress]
+
+# README script check (CI runs this; every yarn script the docs name must exist)
+node scripts/check-readme-scripts.mjs
 ```
 
 `yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the long-running fork.
 
-## Layout
+Operational scripts under `packages/hardhat/scripts/`: `create-market`, `seed-pool`, `e2e-testnet`, `record-sync`, `agent-trade`, `evidence`, and throwaway `spikes/`. `e2e-testnet.ts` is run by hand on Hedera testnet and never in CI; it creates a 10-minute market, splits, seeds the pool, makes all four trades, waits for the scheduled resolution, redeems, writes the HCS record and appends every transaction id to `docs/EVIDENCE.md`.
 
-### Hardhat
+## The invariants, as rules that must never break
 
-- Contracts: `packages/hardhat/contracts/`
-- Deploy scripts: `packages/hardhat/deploy/`
-- Tests: `packages/hardhat/test/`
-- Config: `packages/hardhat/hardhat.config.ts`
-- Tagged deploy: if `deployHederaToken.tags = ["HederaToken"]`, run `yarn hardhat:deploy --tags HederaToken`
+1. The `Verdict.sol` balance is at least `totalCollateral` plus pending reserves, always.
+2. While a market is open, its collateral equals the supply of YES and the supply of NO.
+3. After settlement, `collateral * 1e8 >= yesSupply * payout + noSupply * (1e8 - payout)`.
+4. A payout is written once and no function can change it.
+5. State is updated before any external call, and every function that pays HBAR is guarded against reentrancy.
+6. `Verdict.sol` makes no call to a DEX and grants no allowance to one. Everything that touches SaucerSwap sits in `VerdictRouter.sol` and uses only public functions, so a fault in trading code cannot reach collateral.
 
-### Foundry
+## The Hedera rules
 
-- Contracts: `packages/foundry/contracts/`
-- Deploy scripts: `packages/foundry/script/` (`Deploy.s.sol`, `DeployHederaToken.s.sol`, `DeployHtsTokenCreator.s.sol`)
-- Tests: `packages/foundry/test/`
-- Config: `packages/foundry/foundry.toml`
-- One contract: `yarn foundry:deploy --file DeployHederaToken.s.sol`
+- Units. Inside the EVM, `msg.value` and balances are tinybars with 8 decimals. Wallets and the JSON-RPC relay speak weibars with 18 decimals. Convert only at the UI boundary, in `packages/nextjs/lib/format.ts`. 1 HBAR is 100,000,000 tinybars.
+- Response codes. Every HTS and HSS call returns a response code and 22 is success. Codes live in `contracts/libraries/HederaCodes.sol`. Wrap calls in a helper that reverts with a custom error carrying the code; never ignore one.
+- Association. A recipient must be associated with a token or have a free automatic association slot. Surface code 184 as `NotAssociated(token)`. Before an action that sends tokens, check association and offer associate; before one that pulls tokens, check the allowance and offer approve.
+- HTS goes through the system contract at `0x167`, never through a deployed ERC-20. Use the system contract interfaces the project already imports; do not hand-write ABIs. Amounts are `int64` at the HTS boundary: bound inputs and cast safely.
+- HSS goes through the system contract at `0x16b`. `scheduleCall` does not revert: check for code 22 and a non-zero schedule address. Call `hasScheduleCapacity` first and probe forward on a busy second. Enforce the scheduling horizon in `createMarket`, with a minimum of 5 minutes ahead.
+- Collateral is tracked in storage, never inferred from the balance: native transfers can change a contract's balance without running its code.
+- Hedera is a public ledger, never a blockchain. HBAR is uppercase and singular, tinybars lowercase and plural, network names lowercase (Hedera testnet).
+- External addresses live only in `packages/hardhat/config/addresses.ts`.
+- `.env` files are git-ignored. Never commit one and never print a private key.
 
-### After deploy
+## How to add a market kind
 
-ABIs and addresses are written to `packages/nextjs/contracts/deployedContracts.ts`. Put third-party contracts in `packages/nextjs/contracts/externalContracts.ts`.
+Five touches, all mechanical. The full walkthrough is `docs/TUTORIAL.md`.
 
-Sample contracts on this starter: `HederaToken` (ERC-20) and `HtsTokenCreator` (HTS precompile at `0x167`).
+1. Add the enum value in `packages/hardhat/contracts/interfaces/IVerdict.sol`.
+2. Add the payoff branch in the pure payoff function in `packages/hardhat/contracts/Verdict.sol`.
+3. Add a test table in `packages/hardhat/test/Verdict.test.ts` covering each bound, a value just either side of it, and a midpoint.
+4. Add the label in `packages/nextjs/lib/payoff.ts`.
+5. Add the payoff diagram in `packages/nextjs/components/PayoffDiagram.tsx`.
 
-## Frontend contract interaction
+## Trading Verdict from an agent
 
-Hooks live in `packages/nextjs/hooks/scaffold-hbar`. Use the names that exist in the codebase:
+- `GET /api/markets` and `GET /api/markets/[id]` return market terms, status and odds as JSON. `GET /api/quote` returns a quote for any of the four trades, net of pool fees.
+- `/llms.txt` is a plain-text description of the app, the contracts and the API, written for agents.
+- `packages/hardhat/scripts/agent-trade.ts` is the example: it reads `/api/markets`, picks a market, takes a quote and buys through the router with a key from the environment.
 
-- `useScaffoldReadContract` — not `useScaffoldContractRead`
-- `useScaffoldWriteContract` — not `useScaffoldContractWrite`
+## Checks before calling work finished
 
-Also: `useScaffoldWatchContractEvent`, `useScaffoldEventHistory`, `useDeployedContractInfo`, `useScaffoldContract`, `useTransactor`.
+All of these pass, from a clean tree:
 
-```typescript
-const { data: balance } = useScaffoldReadContract({
-  contractName: "HederaToken",
-  functionName: "balanceOf",
-  args: [connectedAddress],
-});
-
-const { writeContractAsync, isPending } = useScaffoldWriteContract({
-  contractName: "HederaToken",
-});
-
-await writeContractAsync({
-  functionName: "mint",
-  args: [connectedAddress, parseEther("1")],
-});
-```
-
-`HederaToken.mint` is `onlyOwner`. For HTS creation, `HtsTokenCreator.createToken` is payable (HTS fee via `msg.value`) and emits `TokenCreated`.
-
-### UI
-
-Use `@scaffold-hbar-ui/components` for web3 UI: `Address`, `AddressInput`, `Balance`, `EtherInput`, `IntegerInput`.
-
-Use DaisyUI classes, not raw Tailwind when a DaisyUI component exists:
-
-```tsx
-<button className="btn btn-primary">Connect</button>
-```
-
-### Networks
-
-- Hardhat: `packages/hardhat/hardhat.config.ts` (`hederaTestnet` 296, `hederaMainnet` 295)
-- Foundry: `packages/foundry/foundry.toml` (`hedera_testnet`, `hedera_mainnet`)
-- Next.js: `packages/nextjs/scaffold.config.ts` (target networks, polling, RPC overrides, WalletConnect)
+- `yarn hardhat:compile`, `yarn hardhat:test`, `yarn hardhat:lint --max-warnings=0`, `yarn hardhat:check-types`
+- `yarn next:lint --max-warnings=0`, `yarn next:check-types`, `yarn next:build`
+- `node scripts/check-readme-scripts.mjs`
+- The contract invariants hold in the test suite, including the property tests
+- Docs updated for any behaviour that changed; a troubleshooting row added for anything that broke and was understood
 
 ## Style
 
@@ -125,7 +138,7 @@ Use DaisyUI classes, not raw Tailwind when a DaisyUI component exists:
 | `UpperCamelCase` | types, components |
 | `lowerCamelCase` | variables, functions |
 | `CONSTANT_CASE` | constants |
-| `snake_case` | Hardhat deploy files and Foundry scripts |
+| `snake_case` | Hardhat deploy files |
 
 Next.js imports use the `~~` alias:
 
@@ -135,4 +148,40 @@ import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
 
 App Router pages live under `packages/nextjs/app/`. Add `"use client"` when the page uses hooks.
 
-Prefer `type` over `interface`. No `T` prefix on types. Let TypeScript infer when it can. Comments should add information.
+Prefer `type` over `interface`. No `T` prefix on types. Let TypeScript infer when it can. Comments should add information. NatSpec on every external contract function.
+
+Prose style, in code comments and docs alike: plain and direct, no em or en dashes, no emoji, no marketing adjectives, no filler. No commented-out code, no TODOs, no placeholders, no `any`, no empty catch blocks, no unused dependencies.
+
+## Frontend contract interaction
+
+Hooks live in `packages/nextjs/hooks/scaffold-hbar`. Use the names that exist in the codebase:
+
+- `useScaffoldReadContract`, not `useScaffoldContractRead`
+- `useScaffoldWriteContract`, not `useScaffoldContractWrite`
+
+Also: `useScaffoldWatchContractEvent`, `useScaffoldEventHistory`, `useDeployedContractInfo`, `useScaffoldContract`, `useTransactor`.
+
+```typescript
+const { data: payout } = useScaffoldReadContract({
+  contractName: "Verdict",
+  functionName: "getMarket",
+  args: [marketId],
+});
+
+const { writeContractAsync, isPending } = useScaffoldWriteContract({
+  contractName: "Verdict",
+});
+
+await writeContractAsync({
+  functionName: "split",
+  args: [marketId, connectedAddress, connectedAddress],
+  value: parseEther("1"),
+});
+```
+
+Use `@scaffold-hbar-ui/components` for web3 UI: `Address`, `AddressInput`, `Balance`, `EtherInput`, `IntegerInput`. Use DaisyUI classes, not raw Tailwind when a DaisyUI component exists.
+
+## Networks
+
+- Hardhat: `packages/hardhat/hardhat.config.ts` (`hederaTestnet` 296, `hederaMainnet` 295)
+- Next.js: `packages/nextjs/scaffold.config.ts` (target networks, polling, RPC overrides, WalletConnect)
