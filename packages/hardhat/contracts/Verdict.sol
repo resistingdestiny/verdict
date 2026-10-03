@@ -296,10 +296,17 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         }
     }
 
-    /// @dev Moves a market's reserve out of `pendingReserves`, which makes it sweepable surplus.
+    /// @dev Moves a market's reserve out of `pendingReserves`, which makes it sweepable surplus, and deletes
+    ///      the market's schedule if it has not run, so the network can no longer charge this contract for a
+    ///      run that would find the market settled (invariant 1). Called from inside the scheduled run itself
+    ///      the delete fails, which is harmless, so the code is not checked. `m.schedule` stays as a record.
     function _releaseReserve(Market storage m) private {
         pendingReserves -= m.reserve;
         m.reserve = 0;
+        if (m.schedule != address(0)) {
+            // slither-disable-next-line unused-return
+            HSS.deleteSchedule(m.schedule);
+        }
     }
 
     // ---------------------------------------------------------------- internals: creation

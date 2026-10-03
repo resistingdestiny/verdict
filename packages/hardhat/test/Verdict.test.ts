@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { now, ONE_HBAR, setNextTime, setTime } from "./helpers/hedera";
+import { now, ONE_HBAR, setBalance, setNextTime, setTime } from "./helpers/hedera";
 import {
   approveBoth,
   createMarket,
@@ -499,9 +499,10 @@ describe("Verdict", function () {
       await verdict.resolve(id);
       await pushRound(feed, 1n, expiry);
       await expect(verdict.resolve(id)).to.be.revertedWithCustomError(verdict, "MarketNotOpen");
-      await expect(hss.executeSchedule((await verdict.getMarket(id)).schedule))
-        .to.emit(verdict, "ResolveDeferred")
-        .withArgs(id, "already settled");
+      // The manual settlement deleted the schedule, so the network never runs it; a direct call to
+      // resolveScheduled, by anyone, finds the market settled and changes nothing.
+      expect((await hss.scheduleAt((await verdict.getMarket(id)).schedule)).deleted).to.equal(true);
+      await expect(verdict.resolveScheduled(id)).to.emit(verdict, "ResolveDeferred").withArgs(id, "already settled");
       await setTime(expiry + DAY);
       await expect(verdict.voidMarket(id)).to.be.revertedWithCustomError(verdict, "MarketNotOpen");
       expect((await verdict.getMarket(id)).payout).to.equal(ONE_HBAR);
@@ -540,6 +541,68 @@ describe("Verdict", function () {
       await expect(verdict.voidMarket(0)).to.be.revertedWithCustomError(verdict, "FreshReadingExists");
       await failing.setReverting(true);
       await expect(verdict.voidMarket(0)).to.emit(verdict, "Voided").withArgs(0, owner.address);
+    });
+  });
+
+  describe("schedule cleanup on settlement (review M2)", function () {
+    it("a manual resolve deletes the pending schedule before the reserve is released", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, hss, feed, owner, bob } = ctx;
+      const { id, expiry } = await createMarket(ctx, { kind: Kind.Above, lower: 1n });
+      const schedule = (await verdict.getMarket(id)).schedule;
+      expect((await hss.scheduleAt(schedule)).deleted).to.equal(false);
+      await pushRound(feed, 2n, expiry);
+      await setTime(expiry + 1n);
+      await expect(verdict.resolve(id)).to.emit(verdict, "Resolved");
+      const scheduled = await hss.scheduleAt(schedule);
+      expect(scheduled.deleted).to.equal(true);
+      expect(scheduled.executed).to.equal(false);
+      expect((await verdict.getMarket(id)).schedule, "the schedule address stays as a record").to.equal(schedule);
+      expect(await verdict.pendingReserves()).to.equal(0n);
+      // The network cannot run a deleted schedule, so the swept reserve can never be charged afterwards.
+      await expect(hss.executeSchedule(schedule)).to.be.revertedWith("schedule finished");
+      await expect(verdict.connect(owner).sweepSurplus(bob.address)).to.changeEtherBalance(bob, RESERVE);
+      await expectInvariants(ctx, [id]);
+    });
+
+    it("voidMarket deletes the pending schedule too", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, hss } = ctx;
+      const { id, expiry } = await createMarket(ctx, { kind: Kind.Above, lower: 1n });
+      const schedule = (await verdict.getMarket(id)).schedule;
+      await setTime(expiry + DAY);
+      await expect(verdict.voidMarket(id)).to.emit(verdict, "Voided");
+      expect((await hss.scheduleAt(schedule)).deleted).to.equal(true);
+      await expect(hss.executeSchedule(schedule)).to.be.revertedWith("schedule finished");
+    });
+
+    it("a settlement by the schedule is not double-handled and the reserve covers the run's charge", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, hss, feed, alice, owner, bob } = ctx;
+      const { id, expiry } = await createMarket(ctx, { kind: Kind.Above, lower: 1n });
+      await verdict.connect(alice).split(id, alice.address, alice.address, { value: 3n * ONE_HBAR });
+      const schedule = (await verdict.getMarket(id)).schedule;
+      const verdictAddress = await verdict.getAddress();
+      // Until the run, the reserve is pending and nothing above collateral plus reserves exists to sweep.
+      await expect(verdict.connect(owner).sweepSurplus(bob.address)).to.be.revertedWithCustomError(
+        verdict,
+        "NothingToSweep",
+      );
+      await pushRound(feed, 2n, expiry);
+      await setTime(expiry + 1n);
+      await expect(hss.executeSchedule(schedule)).to.emit(verdict, "Resolved");
+      const scheduled = await hss.scheduleAt(schedule);
+      expect(scheduled.executed).to.equal(true);
+      expect(scheduled.deleted, "the delete from inside the run fails harmlessly").to.equal(false);
+      await expect(hss.executeSchedule(schedule)).to.be.revertedWith("schedule finished");
+      // The mock charges nothing for the run. On Hedera the network charges this contract, as the
+      // schedule's payer, when the run executes; simulate that charge out of the balance now. Invariant
+      // 1 holds because the reserve was still held, not swept, at the moment the charge could land.
+      const charge = RESERVE / 2n;
+      await setBalance(verdictAddress, (await ethers.provider.getBalance(verdictAddress)) - charge);
+      await expectInvariants(ctx, [id]);
+      await expect(verdict.connect(owner).sweepSurplus(bob.address)).to.changeEtherBalance(bob, RESERVE - charge);
+      await expectInvariants(ctx, [id]);
     });
   });
 
