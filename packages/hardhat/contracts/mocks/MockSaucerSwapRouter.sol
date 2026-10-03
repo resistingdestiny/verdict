@@ -51,7 +51,7 @@ contract MockSaucerSwapRouter {
         require(amountETH >= amountETHMin, "MockSaucerSwapRouter: INSUFFICIENT_B_AMOUNT");
         _pullToken(token, msg.sender, pair, amountToken);
         _sendHbar(pair, amountETH);
-        liquidity = MockSaucerSwapPair(pair).mint(to);
+        liquidity = MockSaucerSwapPair(payable(pair)).mint(to);
     }
 
     function addLiquidityETH(
@@ -77,7 +77,7 @@ contract MockSaucerSwapRouter {
         }
         _pullToken(token, msg.sender, pair, amountToken);
         _sendHbar(pair, amountETH);
-        liquidity = MockSaucerSwapPair(pair).mint(to);
+        liquidity = MockSaucerSwapPair(payable(pair)).mint(to);
         if (msg.value > amountETH) _sendHbar(msg.sender, msg.value - amountETH);
     }
 
@@ -89,7 +89,7 @@ contract MockSaucerSwapRouter {
         address to,
         uint256 deadline
     ) external ensure(deadline) returns (uint256 amountToken, uint256 amountETH) {
-        MockSaucerSwapPair pair = MockSaucerSwapPair(_pairFor(token));
+        MockSaucerSwapPair pair = MockSaucerSwapPair(payable(_pairFor(token)));
         pair.lpTransferFrom(msg.sender, address(pair), liquidity);
         (uint256 amount0, uint256 amount1) = pair.burn(to);
         (amountETH, amountToken) = pair.token0() == whbar ? (amount0, amount1) : (amount1, amount0);
@@ -109,7 +109,7 @@ contract MockSaucerSwapRouter {
         amounts = getAmountsOut(msg.value, path);
         require(amounts[1] >= amountOutMin, "MockSaucerSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT");
         _sendHbar(_pairFor(path[1]), amounts[0]);
-        MockSaucerSwapPair(_pairFor(path[1])).swap(0, amounts[1], to);
+        MockSaucerSwapPair(payable(_pairFor(path[1]))).swap(0, amounts[1], to);
     }
 
     function swapExactTokensForETH(
@@ -124,7 +124,7 @@ contract MockSaucerSwapRouter {
         require(amounts[1] >= amountOutMin, "MockSaucerSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT");
         address pair = _pairFor(path[0]);
         _pullToken(path[0], msg.sender, pair, amountIn);
-        MockSaucerSwapPair(pair).swap(amounts[1], 0, to);
+        MockSaucerSwapPair(payable(pair)).swap(amounts[1], 0, to);
     }
 
     function swapETHForExactTokens(
@@ -137,7 +137,7 @@ contract MockSaucerSwapRouter {
         amounts = getAmountsIn(amountOut, path);
         require(amounts[0] <= msg.value, "MockSaucerSwapRouter: EXCESSIVE_INPUT_AMOUNT");
         _sendHbar(_pairFor(path[1]), amounts[0]);
-        MockSaucerSwapPair(_pairFor(path[1])).swap(0, amounts[1], to);
+        MockSaucerSwapPair(payable(_pairFor(path[1]))).swap(0, amounts[1], to);
         if (msg.value > amounts[0]) _sendHbar(msg.sender, msg.value - amounts[0]);
     }
 
@@ -183,7 +183,7 @@ contract MockSaucerSwapRouter {
 
     /// @notice Reserves as (token units, tinybars) for a token/WHBAR pool.
     function _reserves(address token) internal view returns (uint256 reserveToken, uint256 reserveHbar) {
-        MockSaucerSwapPair pair = MockSaucerSwapPair(_pairFor(token));
+        MockSaucerSwapPair pair = MockSaucerSwapPair(payable(_pairFor(token)));
         (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
         return pair.token0() == token ? (uint256(reserve0), uint256(reserve1)) : (uint256(reserve1), uint256(reserve0));
     }

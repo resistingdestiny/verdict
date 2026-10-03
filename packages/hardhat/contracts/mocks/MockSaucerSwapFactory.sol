@@ -31,8 +31,9 @@ contract MockSaucerSwapFactory {
         pairCreateFee = fee;
     }
 
-    /// @notice The fee in tinybars at the current mock exchange rate.
-    function pairCreateFeeTinybars() public view returns (uint256) {
+    /// @notice The fee in tinybars at the current mock exchange rate. Not a view: the real 0x168
+    ///         refreshes its rate on every call, so callers treat it as state-changing too.
+    function pairCreateFeeTinybars() public returns (uint256) {
         return IExchangeRate(EXCHANGE_RATE).tinycentsToTinybars(pairCreateFee);
     }
 
@@ -49,6 +50,4 @@ contract MockSaucerSwapFactory {
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         emit PairCreated(token0, token1, pair, allPairs.length);
     }
-
-    receive() external payable {}
 }
