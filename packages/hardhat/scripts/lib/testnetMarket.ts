@@ -25,7 +25,7 @@ import { hashscanContract, hashscanSchedule, hashscanToken, longZeroToEntityId }
 export const GAS = {
   createMarket: 6_000_000n,
   createPool: 9_000_000n,
-  swap: 3_000_000n,
+  swap: 6_000_000n,
   call: 3_000_000n,
 } as const;
 

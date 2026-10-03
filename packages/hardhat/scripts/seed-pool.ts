@@ -41,12 +41,13 @@ async function main() {
   console.log(`Splitting ${args.split} HBAR into YES and NO on market ${id}`);
   const splitTx = await verdict.split(id, deployer.address, deployer.address, {
     value: splitHbar * WEIBARS_PER_TINYBAR,
+    gasLimit: 3_000_000n, // two first-use token associations for the recipient cost about 700,000 gas each
   });
   console.log(`Split: ${hashscanTx(splitTx.hash)}`);
   await splitTx.wait();
 
   console.log(`Approving the SaucerSwap router for ${splitHbar} YES units`);
-  const approveTx = await hts.approve(market.yes, saucerswap.router, splitHbar);
+  const approveTx = await hts.approve(market.yes, saucerswap.router, splitHbar, { gasLimit: 1_000_000n });
   console.log(`Approve: ${hashscanTx(approveTx.hash)}`);
   await approveTx.wait();
 

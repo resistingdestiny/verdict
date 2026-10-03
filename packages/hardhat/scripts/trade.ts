@@ -3,6 +3,13 @@ import { TESTNET_ADDRESSES } from "../config/addresses";
 import { parseArgs, requireArgs, hashscanTx, WEIBARS_PER_TINYBAR } from "./lib/routerCli";
 
 /**
+ * Explicit gas limits: the relay's estimate does not account for HTS work, and the router's first trade on a
+ * market associates itself with both tokens at about 700,000 gas each (measured on testnet, 2026-10-03).
+ */
+const TRADE_GAS_LIMIT = 6_000_000n;
+const APPROVE_GAS_LIMIT = 1_000_000n;
+
+/**
  * Runs one of the four router trades on Hedera testnet with a 2 percent slippage bound.
  *
  *   yarn hardhat run scripts/trade.ts --network hederaTestnet -- --id 3 --trade buyYes --amount 1
@@ -36,30 +43,30 @@ async function main() {
     const quote = await router.quoteBuyYes(id, hbarIn / WEIBARS_PER_TINYBAR);
     const minYesOut = (quote * SLIPPAGE_NUM) / SLIPPAGE_DEN;
     console.log(`buyYes: ${args.amount} HBAR, quote ${quote} YES units, min ${minYesOut}`);
-    tx = await router.buyYes(id, minYesOut, deadline, { value: hbarIn });
+    tx = await router.buyYes(id, minYesOut, deadline, { value: hbarIn, gasLimit: TRADE_GAS_LIMIT });
   } else if (args.trade === "sellYes") {
     const yesIn = ethers.parseUnits(args.amount, 8);
     const quote = await router.quoteSellYes(id, yesIn);
     const minHbarOut = (quote * SLIPPAGE_NUM) / SLIPPAGE_DEN;
     console.log(`Approving the Verdict router for ${yesIn} YES units`);
-    await (await hts.approve(market.yes, routerDeployment.address, yesIn)).wait();
+    await (await hts.approve(market.yes, routerDeployment.address, yesIn, { gasLimit: APPROVE_GAS_LIMIT })).wait();
     console.log(`sellYes: ${yesIn} YES units, quote ${quote} tinybars, min ${minHbarOut}`);
-    tx = await router.sellYes(id, yesIn, minHbarOut, deadline);
+    tx = await router.sellYes(id, yesIn, minHbarOut, deadline, { gasLimit: TRADE_GAS_LIMIT });
   } else if (args.trade === "buyNo") {
     const hbarIn = ethers.parseEther(args.amount);
     const [, hbarBack] = await router.quoteBuyNo(id, hbarIn / WEIBARS_PER_TINYBAR);
     const minHbarBack = (hbarBack * SLIPPAGE_NUM) / SLIPPAGE_DEN;
     console.log(`buyNo: ${args.amount} HBAR, quote ${hbarBack} tinybars back, min ${minHbarBack}`);
-    tx = await router.buyNo(id, minHbarBack, deadline, { value: hbarIn });
+    tx = await router.buyNo(id, minHbarBack, deadline, { value: hbarIn, gasLimit: TRADE_GAS_LIMIT });
   } else if (args.trade === "sellNo") {
     const noIn = ethers.parseUnits(args.amount, 8);
     const [needed, net] = await router.quoteSellNo(id, noIn);
     const value = (needed * SLIPPAGE_DEN * WEIBARS_PER_TINYBAR) / SLIPPAGE_NUM; // quote plus 2 percent headroom
     const minHbarOut = (net * SLIPPAGE_NUM) / SLIPPAGE_DEN; // the net of the YES purchase, less 2 percent
     console.log(`Approving the Verdict router for ${noIn} NO units`);
-    await (await hts.approve(market.no, routerDeployment.address, noIn)).wait();
+    await (await hts.approve(market.no, routerDeployment.address, noIn, { gasLimit: APPROVE_GAS_LIMIT })).wait();
     console.log(`sellNo: ${noIn} NO units, YES quote ${needed} tinybars, net ${net} tinybars, min net ${minHbarOut}`);
-    tx = await router.sellNo(id, noIn, minHbarOut, deadline, { value });
+    tx = await router.sellNo(id, noIn, minHbarOut, deadline, { value, gasLimit: TRADE_GAS_LIMIT });
   } else {
     throw new Error(`Unknown trade "${args.trade}". Known: buyYes, sellYes, buyNo, sellNo`);
   }

@@ -46,6 +46,7 @@ async function main() {
 
   const tx = await verdict.createMarket(resolverDeployment.address, feedId, kind, lower, upper, expiry, {
     value: cost * WEIBARS_PER_TINYBAR,
+    gasLimit: 6_000_000n, // two HTS token creations plus the HSS schedule, measured at about 2.5 million gas
   });
   console.log(`Transaction: ${hashscanTx(tx.hash)}`);
   const receipt = await tx.wait();
