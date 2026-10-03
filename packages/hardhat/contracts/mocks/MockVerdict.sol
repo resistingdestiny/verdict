@@ -92,7 +92,7 @@ contract MockVerdict {
         IVerdict.Market storage m = _market(id);
         if (block.timestamp >= m.expiry) revert MarketNotOpen(id);
         if (msg.value == 0) revert ZeroAmount();
-        if (msg.value > uint256(type(int64).max)) revert AmountTooLarge();
+        if (msg.value > uint256(uint64(type(int64).max))) revert AmountTooLarge();
         m.collateral += msg.value;
         _mintTo(m.yes, yesTo, msg.value);
         _mintTo(m.no, noTo, msg.value);
