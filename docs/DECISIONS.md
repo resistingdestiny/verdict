@@ -122,3 +122,4 @@ None yet.
 | 2026-10-03 | The harness `yarn.json` runs both lints with `--max-warnings=0`, both type checks and `yarn next:test` in addition to compile and build, and `check-outside-kind.mjs` checks the bounds check and every duplicated kind list. | The harness must agree with the finish line in AGENTS.md and the CI workflow; the gate wins over both. |
 | 2026-10-03 | e2e-testnet run, market 1 | 100.07289819 | 100.07289819 |
 | 2026-10-03 | reference deployment run | 523.16249304 | 623.23539123 |
+| 2026-10-03 | reference deployment run | 216.62316145 | 839.85855268 |

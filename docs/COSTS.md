@@ -81,3 +81,18 @@ Measured HBAR and gas for every step of the market lifecycle on Hedera testnet. 
 | Market 7 split 20.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791044878.252720207 |
 | Market 7 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791044882.736699164 |
 | Market 7 pool creation and seed | 6,787,867 | 17.28193757 (20 records) | 0.0.7314364@1791044890.684807279 |
+| Deploy Verdict | 2,923,987 | 2.42690921 (2 records) | 0.0.7314364@1791045376.556285153 |
+| Deploy ChainlinkResolver | 831,071 | 0.68978893 (2 records) | 0.0.7314364@1791043401.788109738 |
+| Deploy VerdictRouter | 1,991,985 | 1.65334755 (2 records) | 0.0.7314364@1791045387.597336191 |
+| Create market: BTC / USD Below, strike 5 percent above spot, 2026-10-09T16:00:00Z | 1,988,476 | 24.94645100 (4 records) | 0.0.7314364@1791045487.255226083 |
+| Market 0 split 10.0 HBAR | 1,558,732 | 1.29374756 (5 records) | 0.0.7314364@1791045493.628738144 |
+| Market 0 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791045502.518462078 |
+| Market 0 pool creation and seed | 6,787,758 | 17.28184710 (20 records) | 0.0.7314364@1791045508.987745456 |
+| Create market: ETH / USD Between, range 10 percent around spot, 2026-10-14T16:00:00Z | 1,975,032 | 24.93529248 (4 records) | 0.0.7314364@1791045517.928921907 |
+| Market 1 split 10.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791045520.192375995 |
+| Market 1 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791045526.240633959 |
+| Market 1 pool creation and seed | 6,787,758 | 17.28184710 (20 records) | 0.0.7314364@1791045534.955528162 |
+| Create market: HBAR / USD Scalar, range 20 percent around spot, 2026-10-30T16:00:00Z | 1,975,021 | 24.93528335 (4 records) | 0.0.7314364@1791045539.772270147 |
+| Market 2 split 10.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791045545.740186435 |
+| Market 2 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791045551.935920544 |
+| Market 2 pool creation and seed | 6,787,758 | 17.28184710 (20 records) | 0.0.7314364@1791045560.931071055 |

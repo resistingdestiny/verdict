@@ -35,8 +35,14 @@ import {
 const MIN_BALANCE_HBAR = Number(process.env.REF_MIN_BALANCE_HBAR ?? "150");
 const SHORT_MARKET_MINUTES = 30;
 const EXPIRY_MARGIN_SECONDS = 30;
-const SPLIT_TINYBARS = hbar(20);
-const LIQUIDITY_TINYBARS = hbar(10);
+// REF_SPLIT_HBAR and REF_LIQUIDITY_HBAR shrink the per-market stake when the deployer is short of HBAR.
+const SPLIT_TINYBARS = hbar(Number(process.env.REF_SPLIT_HBAR ?? "20"));
+const LIQUIDITY_TINYBARS = hbar(Number(process.env.REF_LIQUIDITY_HBAR ?? "10"));
+// REF_ONLY=btc-below,eth-between limits the run to those plan keys, so a partial budget goes where it matters.
+const ONLY_KEYS = (process.env.REF_ONLY ?? "")
+  .split(",")
+  .map(k => k.trim())
+  .filter(Boolean);
 const SECTION = "## Reference markets created";
 const HEADER = "| Market | Kind | Expiry | Market id | Pool | Purpose |";
 
@@ -169,6 +175,7 @@ async function main() {
   const stopped: string[] = [];
 
   for (const plan of PLANS) {
+    if (ONLY_KEYS.length > 0 && !ONLY_KEYS.includes(plan.key)) continue;
     const key = `ref:${plan.key}`;
     if (ledger.has(`${key}:row`)) {
       console.log(`[skip] ${describe(plan)} (market ${ledger.value(`${key}:row`, "id")})`);
