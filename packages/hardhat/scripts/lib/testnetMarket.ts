@@ -25,8 +25,8 @@ import { hashscanContract, hashscanSchedule, hashscanToken, longZeroToEntityId }
 export const GAS = {
   createMarket: 6_000_000n,
   createPool: 9_000_000n,
-  swap: 1_500_000n,
-  call: 1_000_000n,
+  swap: 3_000_000n,
+  call: 3_000_000n,
 } as const;
 
 export const KIND = { Above: 0, Below: 1, Between: 2, Scalar: 3 } as const;
@@ -335,6 +335,8 @@ export async function seedPool(
 
 /** The market's view, with its status as a name. */
 export async function readMarket(ctx: TestnetContext, id: bigint) {
-  const m = await ctx.verdict.getMarket(id);
+  // An ethers Result spreads to its indexed entries only; toObject() gives the named struct fields.
+  const result = await ctx.verdict.getMarket(id);
+  const m = (result as unknown as { toObject(): unknown }).toObject() as typeof result;
   return { ...m, statusName: STATUS_NAMES[Number(m.status)] ?? `Unknown(${m.status})` };
 }
