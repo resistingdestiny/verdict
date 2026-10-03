@@ -20,6 +20,8 @@ import {
 } from "./helpers/verdict";
 
 const HALF = ONE_HBAR / 2n;
+const INT128_MAX = (1n << 127n) - 1n;
+const INT128_MIN = -(1n << 127n);
 const CODE_INVALID_SIGNATURE = 7n;
 const CODE_INSUFFICIENT_TX_FEE = 9n;
 const CODE_INSUFFICIENT_TOKEN_BALANCE = 178n;
@@ -213,6 +215,28 @@ describe("Verdict", function () {
       expect((await verdict.getMarket(above.id)).upper).to.equal(0n);
       expect((await verdict.getMarket(below.id)).upper).to.equal(0n);
       expect((await verdict.getMarket(between.id)).upper).to.equal(101n);
+    });
+
+    it("keeps every bound within int128 so a Scalar payout can never overflow (review L1)", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, alice, resolver, feedId, creationCost } = ctx;
+      const expiry = (await now()) + HOUR;
+      const create = (kind: Kind, lower: bigint, upper: bigint) =>
+        verdict.connect(alice).createMarket(resolver, feedId, kind, lower, upper, expiry, { value: creationCost });
+      // Beyond int128 the interpolation panics, which is what the bound check prevents from ever being stored.
+      await expect(verdict.payoutFor(Kind.Scalar, -(10n ** 70n), 10n ** 70n, ONE_HBAR)).to.be.revertedWithPanic(0x11);
+      await expect(create(Kind.Scalar, INT128_MIN - 1n, 0n)).to.be.revertedWithCustomError(verdict, "InvalidBounds");
+      await expect(create(Kind.Scalar, 0n, INT128_MAX + 1n)).to.be.revertedWithCustomError(verdict, "InvalidBounds");
+      await expect(create(Kind.Between, 0n, INT128_MAX + 1n)).to.be.revertedWithCustomError(verdict, "InvalidBounds");
+      await expect(create(Kind.Above, INT128_MAX + 1n, 0n)).to.be.revertedWithCustomError(verdict, "InvalidBounds");
+      await expect(create(Kind.Below, INT128_MIN - 1n, 0n)).to.be.revertedWithCustomError(verdict, "InvalidBounds");
+      // The widest allowed Scalar interpolates without overflow at both ends and in the middle.
+      const { id } = await createMarket(ctx, { kind: Kind.Scalar, lower: INT128_MIN, upper: INT128_MAX });
+      expect((await verdict.getMarket(id)).lower).to.equal(INT128_MIN);
+      expect(await verdict.payoutFor(Kind.Scalar, INT128_MIN, INT128_MAX, 0n)).to.equal(HALF);
+      expect(await verdict.payoutFor(Kind.Scalar, INT128_MIN, INT128_MAX, INT128_MIN + 1n)).to.equal(0n);
+      expect(await verdict.payoutFor(Kind.Scalar, INT128_MIN, INT128_MAX, INT128_MAX - 1n)).to.equal(ONE_HBAR - 1n);
+      expect(await verdict.payoutFor(Kind.Scalar, INT128_MIN, INT128_MAX, 10n ** 70n)).to.equal(ONE_HBAR);
     });
 
     it("refuses a feed the resolver does not know, with the resolver's own error", async function () {

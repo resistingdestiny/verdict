@@ -90,8 +90,9 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
     ) external payable override nonReentrant returns (uint256 id) {
         if (!resolverAllowed[resolver]) revert ResolverNotAllowed(resolver);
         _checkExpiry(expiry);
+        if (!_fitsInt128(lower)) revert InvalidBounds();
         if (kind == Kind.Between || kind == Kind.Scalar) {
-            if (upper <= lower) revert InvalidBounds();
+            if (upper <= lower || !_fitsInt128(upper)) revert InvalidBounds();
         } else {
             upper = 0;
         }
@@ -310,6 +311,12 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
     }
 
     // ---------------------------------------------------------------- internals: creation
+
+    /// @dev Bounds are kept within int128 so the Scalar interpolation in `_payout` can never overflow, whatever
+    ///      the feed answers; a panic there would brick `resolve`, `resolveScheduled` and `voidMarket`.
+    function _fitsInt128(int256 value) private pure returns (bool) {
+        return value >= type(int128).min && value <= type(int128).max;
+    }
 
     function _checkExpiry(uint64 expiry) private view {
         uint64 earliest = uint64(block.timestamp) + MIN_LEAD;
