@@ -225,6 +225,7 @@ Problems hit during this build. If you hit a new one and learn why, add a row.
 - **Other oracles.** Implement `IResolver` (`readingAt`, `describe`, `feedDecimals`), deploy it, and have the owner allow it with `setResolver`. `resolvers/ChainlinkResolver.sol` is the reference; a guarded resolver that cross-checks a second oracle is sketched in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **Other collateral.** Out of scope for this template. The split, merge and redeem path assumes HBAR in tinybars, so changing the collateral means reworking the collateral accounting in `Verdict.sol`.
 - **Other venues.** SaucerSwap V2 pools suit outcome tokens because their price is bounded between 0 and 1 HBAR. The core and router boundary means a new venue touches only `VerdictRouter.sol`; collateral code never changes. Limit orders, protocol fees and governance are further extensions in the same layer.
+- **Test an extension with Hedera Harness.** The `.harness/` recipe has a fresh agent add the Outside kind and grades the result; it is the automated form of the AGENTS.md test. With [hedera-harness](https://github.com/hedera-dev/hedera-harness) installed as a dev dependency, run `npx hedera-harness doctor` to check the setup, `npx hedera-harness validate` for the deterministic checks without an agent, and `npx hedera-harness run` for the full run.
 
 ## Limits and risks
 

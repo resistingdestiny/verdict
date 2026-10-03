@@ -1,0 +1,43 @@
+{
+  "name": "verdict-outside-kind-yarn",
+  "description": "Commands that must pass after the Outside kind is added. Keep install named \"install\" for fingerprint skip across attempts.",
+  "requiresNoSecrets": true,
+  "forbiddenCommands": [
+    "npm install",
+    "npm run",
+    "pnpm install",
+    "pnpm run"
+  ],
+  "commands": [
+    {
+      "name": "install",
+      "command": "yarn install",
+      "timeoutMs": 300000,
+      "purpose": "Install workspace dependencies."
+    },
+    {
+      "name": "outside-kind-check",
+      "command": "node .harness/validators/check-outside-kind.mjs",
+      "timeoutMs": 600000,
+      "purpose": "Grep the Kind enum for Outside, check the payoff table test exists and run the contract test file."
+    },
+    {
+      "name": "compile",
+      "command": "yarn hardhat:compile",
+      "timeoutMs": 300000,
+      "purpose": "Compile the contracts."
+    },
+    {
+      "name": "lint",
+      "command": "yarn lint",
+      "timeoutMs": 300000,
+      "purpose": "Lint the frontend and the contracts."
+    },
+    {
+      "name": "build",
+      "command": "yarn next:build",
+      "timeoutMs": 300000,
+      "purpose": "Production build (includes TypeScript checks)."
+    }
+  ]
+}

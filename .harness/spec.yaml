@@ -1,0 +1,21 @@
+schemaVersion: 2
+
+name: verdict-outside-kind
+description: Add the Outside market kind to Verdict: one enum value, one payoff branch, one test table, one label and one payoff diagram. This recipe automates the AGENTS.md fresh-agent test.
+
+agent: claude
+
+prd: .harness/prd.md
+
+baseline:
+  commands:
+    - name: install
+      command: yarn install
+    - name: compile
+      command: yarn hardhat:compile
+    - name: test
+      command: yarn hardhat:test
+    - name: lint
+      command: yarn lint
+    - name: build
+      command: yarn next:build

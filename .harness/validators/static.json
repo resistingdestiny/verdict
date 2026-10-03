@@ -1,0 +1,59 @@
+{
+  "name": "verdict-outside-kind-static",
+  "description": "Static invariants for the Outside market kind: the enum value, the payoff branch, the test table, the label and the diagram, with the repo's docs and layout intact.",
+  "jsonAssertions": [
+    {
+      "file": "package.json",
+      "path": "packageManager",
+      "equals": "yarn@3.2.3"
+    }
+  ],
+  "fileAssertions": {
+    "required": [
+      "README.md",
+      "AGENTS.md",
+      "LICENSE",
+      "template.json",
+      "docs/TUTORIAL.md",
+      "packages/hardhat/contracts/interfaces/IVerdict.sol",
+      "packages/hardhat/contracts/Verdict.sol",
+      "packages/hardhat/test/Verdict.test.ts",
+      "packages/nextjs/lib/payoff.ts",
+      "packages/nextjs/components/PayoffDiagram.tsx",
+      ".harness/spec.yaml",
+      ".harness/prd.md"
+    ],
+    "forbidden": [
+      ".env",
+      "packages/hardhat/.env",
+      "packages/nextjs/.env",
+      "packages/nextjs/.env.local"
+    ]
+  },
+  "textAssertions": [
+    {
+      "file": "packages/hardhat/contracts/interfaces/IVerdict.sol",
+      "contains": ["Outside"]
+    },
+    {
+      "file": "packages/hardhat/contracts/Verdict.sol",
+      "contains": ["Outside"]
+    },
+    {
+      "file": "packages/hardhat/test/Verdict.test.ts",
+      "contains": ["Outside"]
+    },
+    {
+      "file": "packages/nextjs/lib/payoff.ts",
+      "contains": ["Outside"]
+    },
+    {
+      "file": "packages/nextjs/components/PayoffDiagram.tsx",
+      "contains": ["Outside"]
+    },
+    {
+      "file": "README.md",
+      "contains": ["yarn hardhat:test"]
+    }
+  ]
+}
