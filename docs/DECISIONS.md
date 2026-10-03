@@ -125,3 +125,4 @@ None yet.
 | 2026-10-03 | e2e-testnet run, market 1 | 100.07289819 | 100.07289819 |
 | 2026-10-03 | reference deployment run | 523.16249304 | 623.23539123 |
 | 2026-10-03 | reference deployment run | 216.62316145 | 839.85855268 |
+| 2026-10-03 | e2e-testnet run, market 3 | 96.89542241 | 936.75397509 |

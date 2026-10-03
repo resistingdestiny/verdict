@@ -96,3 +96,17 @@ Measured HBAR and gas for every step of the market lifecycle on Hedera testnet. 
 | Market 2 split 10.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791045545.740186435 |
 | Market 2 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791045551.935920544 |
 | Market 2 pool creation and seed | 6,787,758 | 17.28184710 (20 records) | 0.0.7314364@1791045560.931071055 |
+| Create market: HBAR / USD Above, 10 minutes, strike 5 percent below spot | 1,954,952 | 24.99355986 (4 records) | 0.0.7314364@1791047131.574357351 |
+| Market 3 split 20.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791047140.560266747 |
+| Market 3 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791047145.290213666 |
+| Market 3 pool creation and seed | 6,787,976 | 17.31949493 (20 records) | 0.0.7314364@1791047152.983246865 |
+| buyYes 1 HBAR on market 3 | 255,657 | 0.21219531 (10 records) | 0.0.7314364@1791047160.976475184 |
+| Approve VerdictRouter on YES for sellYes | 727,184 | 0.60356272 (2 records) | 0.0.7314364@1791047168.389991421 |
+| sellYes 1 YES on market 3 | 2,369,335 | 1.96654805 (15 records) | 0.0.7314364@1791047175.344323530 |
+| buyNo 1 HBAR on market 3 | 3,145,704 | 2.61093432 (19 records) | 0.0.7314364@1791047183.194102401 |
+| Approve VerdictRouter on NO for sellNo | 727,184 | 0.60356272 (2 records) | 0.0.7314364@1791047185.319499360 |
+| sellNo 1 NO on market 3 | 3,159,769 | 2.62260827 (19 records) | 0.0.7314364@1791047195.286128930 |
+| Resolution of market 3 | pending | 0.17830973 | 0.0.7314364-1791047131-574357351 |
+| Approve Verdict on YES for redeem | 727,196 | 0.60357268 (2 records) | 0.0.7314364@1791047778.796135036 |
+| Approve Verdict on NO for redeem | 727,184 | 0.60356272 (2 records) | 0.0.7314364@1791047785.877739713 |
+| Redeem 78144808 YES and 2000000000 NO on market 3 | 122,946 | 0.10204518 (5 records) | 0.0.7314364@1791047794.008316874 |

@@ -37,6 +37,14 @@ Market 1 of deployment v1 (HBAR / USD Above, 10 minutes, created 2026-10-03 16:0
 | Redemption in a binary market (YES at 1 HBAR, NO at 0) | [transaction](https://hashscan.io/testnet/transaction/0x080c12a9564a24d9e33d2a3730e2a1ce2c8a4bd94015c1b912331599de690143) |
 | HCS messages for creation and settlement | [topic 0.0.10844224](https://hashscan.io/testnet/topic/0.0.10844224), messages 2 (`market_created`) and 4 (`market_settled`) |
 
+Deployment v2 (the fixed contract) repeated the lifecycle on its market 3 (HBAR / USD Above, 10 minutes, created 2026-10-03 17:10 UTC): split, pool, the four trades, then the schedule settled it on its own:
+
+| Step | HashScan |
+| --- | --- |
+| Scheduled execution of `resolveScheduled` on v2, sender is the contract itself | [scheduled transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791047131-574357351), [schedule 0.0.10844890](https://hashscan.io/testnet/schedule/0.0.10844890) |
+| Pool creation and the four trades | see the "Testnet run log" rows for market 3 below |
+| HCS messages on the v2 topic | [topic 0.0.10844607](https://hashscan.io/testnet/topic/0.0.10844607), `market_created` and `market_settled` for market 3 |
+
 Manual resolution and a scalar redemption, on deployment v1 after its schedules deferred (see `docs/SECURITY.md`, "Scheduled run timing"):
 
 | Step | HashScan |
@@ -174,6 +182,29 @@ Three consecutive unattended rolls, if the series ships.
 | Market 2 split 10.0 HBAR | [link](https://hashscan.io/testnet/transaction/0x2f580280357ff4fc6c05bf10590ff0b5e869d07a1417ff893f8a65d16d2f02b4) | 0.0.7314364@1791045545.740186435 | 2026-10-03 |
 | Market 2 approve SaucerSwap router on YES | [link](https://hashscan.io/testnet/transaction/0x8d37e6db4a4dc6692ca7a99fdf6f4caa6594aa12e19e6777f5b2e25b3dd16e9b) | 0.0.7314364@1791045551.935920544 | 2026-10-03 |
 | Market 2 pool creation and seed | [link](https://hashscan.io/testnet/transaction/0x7dcf9f632c105bc78dc47dd3c74a46ed3cffd8913381651f451fe4f9d05caa2b) | 0.0.7314364@1791045560.931071055 | 2026-10-03 |
+| Create market: HBAR / USD Above, 10 minutes, strike 5 percent below spot | [link](https://hashscan.io/testnet/transaction/0xd15e269f053d2261a72f3b5db2c196e53ac4b0bbd159ec912bff2891d7d27cb6) | 0.0.7314364@1791047131.574357351 | 2026-10-03 |
+| Market 3 YES token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000a57Ad8) | no transaction | 2026-10-03 |
+| Market 3 NO token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000A57aD9) | no transaction | 2026-10-03 |
+| Market 3 schedule entity 0.0.10844890 | [link](https://hashscan.io/testnet/schedule/0.0.10844890) | no transaction | 2026-10-03 |
+| Market 3 split 20.0 HBAR | [link](https://hashscan.io/testnet/transaction/0xe22e524b54abac567f19ba3138d82fcb8cdbf86358feb722f6d7eaa481788ea0) | 0.0.7314364@1791047140.560266747 | 2026-10-03 |
+| Market 3 approve SaucerSwap router on YES | [link](https://hashscan.io/testnet/transaction/0x346da5c1afa72e0a5864efcacd94cf9207d6941b8cee6454b6db86ad0e878c72) | 0.0.7314364@1791047145.290213666 | 2026-10-03 |
+| Market 3 pool creation and seed | [link](https://hashscan.io/testnet/transaction/0xb1cd9fe3b016186056e871a219afe96b3bb8cbe2c24528333d676a000e189c74) | 0.0.7314364@1791047152.983246865 | 2026-10-03 |
+| Verdict balance before the scheduled run | [link](https://hashscan.io/testnet/contract/0x6356954dd331b19F5228F2EdF6029951416C6774) | no transaction | 2026-10-03 |
+| buyYes 1 HBAR on market 3 | [link](https://hashscan.io/testnet/transaction/0x10f91883505fdec8b578a189f4bc71fea98ce4ee1880ba6a8ef4a31415497279) | 0.0.7314364@1791047160.976475184 | 2026-10-03 |
+| Approve VerdictRouter on YES for sellYes | [link](https://hashscan.io/testnet/transaction/0xc46cbffac92e9ee6a290146956757a0e1cfc3f6fc928c0705cb6f348f55932ba) | 0.0.7314364@1791047168.389991421 | 2026-10-03 |
+| sellYes 1 YES on market 3 | [link](https://hashscan.io/testnet/transaction/0xaa237d126cd6f0cfb3008cb633c5709a0846a196dbad68a7baafcf9a6ff3e902) | 0.0.7314364@1791047175.344323530 | 2026-10-03 |
+| buyNo 1 HBAR on market 3 | [link](https://hashscan.io/testnet/transaction/0xaea557715b29d19e5cf5b28bbb344bfb337ce03f2b12980c25fc6bdb0dad0939) | 0.0.7314364@1791047183.194102401 | 2026-10-03 |
+| Approve VerdictRouter on NO for sellNo | [link](https://hashscan.io/testnet/transaction/0xfa1c9a37883f1f63fde80c23b3d164be4c7fd66a3acd75cfcb3ac0271dabc069) | 0.0.7314364@1791047185.319499360 | 2026-10-03 |
+| sellNo 1 NO on market 3 | [link](https://hashscan.io/testnet/transaction/0xc90bf38b53cde39aab3cf39c82d1b171680f750a3040393de55444f1f37ca1f3) | 0.0.7314364@1791047195.286128930 | 2026-10-03 |
+| Resolution of market 3 | [link](https://hashscan.io/testnet/transaction/0.0.7314364-1791047131-574357351) | 0.0.7314364-1791047131-574357351 | 2026-10-03 |
+| Verdict balance after the scheduled run | [link](https://hashscan.io/testnet/contract/0x6356954dd331b19F5228F2EdF6029951416C6774) | no transaction | 2026-10-03 |
+| Approve Verdict on YES for redeem | [link](https://hashscan.io/testnet/transaction/0x17ba503b5868c8e0d4ac585716e9fbc490b511bc4a20daf09805255bde694bce) | 0.0.7314364@1791047778.796135036 | 2026-10-03 |
+| Approve Verdict on NO for redeem | [link](https://hashscan.io/testnet/transaction/0x36aabd6d686133f066dd29244e86cf95ba197e52df218e5abafa8c7357fbbd49) | 0.0.7314364@1791047785.877739713 | 2026-10-03 |
+| Redeem 78144808 YES and 2000000000 NO on market 3 | [link](https://hashscan.io/testnet/transaction/0xc0ed68787b056453c951344e80b605da621bab9b262b1a24fc5157e004401012) | 0.0.7314364@1791047794.008316874 | 2026-10-03 |
+| HCS topic 0.0.10844607 | [link](https://hashscan.io/testnet/topic/0.0.10844607) | no transaction | 2026-10-03 |
+| HCS record sync for market 3 | [link](https://hashscan.io/testnet/topic/0.0.10844607) | no transaction | 2026-10-03 |
+| HCS message market_created for market 3 | [link](https://hashscan.io/testnet/transaction/0.0.10348741@1791047813.499276433) | 0.0.10348741@1791047813.499276433 | 2026-10-03 |
+| HCS message market_settled for market 3 | [link](https://hashscan.io/testnet/transaction/0.0.10348741@1791047814.247708910) | 0.0.10348741@1791047814.247708910 | 2026-10-03 |
 
 ## Reference markets created
 
