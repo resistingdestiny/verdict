@@ -76,7 +76,7 @@ type SdkClient = { setOperator(id: unknown, key: unknown): SdkClient; close(): v
 type HieroSdk = {
   Client: { forTestnet(): SdkClient };
   AccountId: { fromString(value: string): unknown };
-  PrivateKey: { fromString(value: string): unknown };
+  PrivateKey: { fromString(value: string): unknown; fromStringECDSA(value: string): unknown };
   TopicId: { fromString(value: string): unknown };
   TopicMessageSubmitTransaction: new () => SdkSubmitTx;
 };

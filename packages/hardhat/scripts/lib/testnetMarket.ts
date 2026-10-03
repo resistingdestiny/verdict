@@ -241,8 +241,13 @@ function parseCreated(verdict: IVerdict, receipt: ContractTransactionReceipt) {
 
 /** Waits for a transaction and throws when it reverted. */
 export async function waitFor(txHash: string): Promise<ContractTransactionReceipt> {
-  const receipt = await ethers.provider.waitForTransaction(txHash);
-  if (!receipt) throw new Error(`Transaction ${txHash} was not mined`);
+  // HardhatEthersProvider does not implement waitForTransaction, so poll for the receipt instead.
+  let receipt = null;
+  for (let attempt = 0; attempt < 60 && !receipt; attempt++) {
+    receipt = await ethers.provider.getTransactionReceipt(txHash);
+    if (!receipt) await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  if (!receipt) throw new Error(`Transaction ${txHash} was not mined within two minutes`);
   if (receipt.status !== 1) throw new Error(`Transaction ${txHash} reverted`);
   return receipt as ContractTransactionReceipt;
 }
