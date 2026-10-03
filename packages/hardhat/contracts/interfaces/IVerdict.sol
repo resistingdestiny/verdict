@@ -8,12 +8,13 @@ pragma solidity ^0.8.28;
 /// @dev Frozen interface. All amounts are tinybars (8 decimals). Outcome tokens have 8 decimals, so one
 ///      whole token is 1e8 units and 1 unit of YES plus 1 unit of NO is backed by exactly 1 tinybar.
 interface IVerdict {
-    /// @notice The four market kinds. Adding a kind is one enum value, one payoff branch and one test table.
+    /// @notice The five market kinds. Append only: enum order is storage layout.
     enum Kind {
         Above, // YES pays 1 HBAR when answer > lower
         Below, // YES pays 1 HBAR when answer < lower
         Between, // YES pays 1 HBAR when lower <= answer < upper
-        Scalar // YES pays (answer - lower) / (upper - lower) HBAR, clamped to [0, 1]
+        Scalar, // YES pays (answer - lower) / (upper - lower) HBAR, clamped to [0, 1]
+        Outside // YES pays 1 HBAR when answer < lower or answer >= upper
     }
 
     /// @notice Lifecycle state of a market.
@@ -32,8 +33,8 @@ interface IVerdict {
         uint8 decimals; // feed decimals the bounds are expressed in
         uint64 expiry; // unix second the market asks about
         uint64 createdAt;
-        int256 lower; // strike for Above and Below, lower bound for Between and Scalar
-        int256 upper; // upper bound for Between and Scalar, unused otherwise
+        int256 lower; // strike for Above and Below, lower bound for Between, Scalar and Outside
+        int256 upper; // upper bound for Between, Scalar and Outside, unused otherwise
         address yes; // HTS token address
         address no; // HTS token address
         address schedule; // HSS schedule entity for resolveScheduled, or address(0) if scheduling failed
@@ -121,7 +122,7 @@ interface IVerdict {
     /// @param feedId Feed identifier understood by the resolver.
     /// @param kind Market kind.
     /// @param lower Strike or lower bound, in the feed's decimals.
-    /// @param upper Upper bound for Between and Scalar, ignored otherwise.
+    /// @param upper Upper bound for Between, Scalar and Outside, ignored otherwise.
     /// @param expiry Unix second the market asks about.
     /// @return id The new market id.
     function createMarket(

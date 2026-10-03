@@ -56,13 +56,33 @@ describe("payoutFor", () => {
     expect(payoutFor(Kind.Scalar, LOWER, UPPER, answer)).toBe(expected);
   });
 
+  it.each([
+    ["well below lower", LOWER / 2n, FULL],
+    ["just below lower", LOWER - 1n, FULL],
+    ["at lower", LOWER, 0n],
+    ["just above lower", LOWER + 1n, 0n],
+    ["midpoint", (LOWER + UPPER) / 2n, 0n],
+    ["just under upper", UPPER - 1n, 0n],
+    ["at upper", UPPER, FULL],
+    ["just above upper", UPPER + 1n, FULL],
+    ["well above upper", UPPER * 2n, FULL],
+  ])("Outside: %s", (_, answer, expected) => {
+    expect(payoutFor(Kind.Outside, LOWER, UPPER, answer)).toBe(expected);
+  });
+
+  it("Outside pays exactly what Between does not", () => {
+    for (const answer of [LOWER - 1n, LOWER, LOWER + 1n, UPPER - 1n, UPPER, UPPER + 1n]) {
+      expect(payoutFor(Kind.Outside, LOWER, UPPER, answer) + payoutFor(Kind.Between, LOWER, UPPER, answer)).toBe(FULL);
+    }
+  });
+
   it("rounds scalar payouts down", () => {
     expect(payoutFor(Kind.Scalar, 0n, 3n, 1n)).toBe(33_333_333n);
     expect(payoutFor(Kind.Scalar, 0n, 3n, 2n)).toBe(66_666_666n);
   });
 
   it("NO always pays the complement", () => {
-    for (const kind of [Kind.Above, Kind.Below, Kind.Between, Kind.Scalar]) {
+    for (const kind of [Kind.Above, Kind.Below, Kind.Between, Kind.Scalar, Kind.Outside]) {
       for (const answer of [LOWER - 1n, LOWER, LOWER + 1n, UPPER - 1n, UPPER, UPPER + 1n]) {
         expect(payoutFor(kind, LOWER, UPPER, answer) + noPayoutFor(kind, LOWER, UPPER, answer)).toBe(FULL);
       }
@@ -76,12 +96,14 @@ describe("bounds", () => {
     expect(kindUsesUpper(Kind.Below)).toBe(false);
     expect(kindUsesUpper(Kind.Between)).toBe(true);
     expect(kindUsesUpper(Kind.Scalar)).toBe(true);
+    expect(kindUsesUpper(Kind.Outside)).toBe(true);
   });
 
   it("requires lower < upper only for two-bound kinds", () => {
     expect(boundsValid(Kind.Above, 5n, 0n)).toBe(true);
     expect(boundsValid(Kind.Between, 5n, 5n)).toBe(false);
     expect(boundsValid(Kind.Scalar, 5n, 6n)).toBe(true);
+    expect(boundsValid(Kind.Outside, 6n, 5n)).toBe(false);
   });
 });
 
@@ -101,11 +123,15 @@ describe("question text", () => {
     expect(
       questionText({ feed: "HBAR / USD", kind: Kind.Scalar, lower: LOWER, upper: UPPER, decimals: 8, expiry }),
     ).toBe("Where between 0.1 and 0.12 will HBAR / USD be at 9 Oct 2026, 16:00 UTC?");
+    expect(
+      questionText({ feed: "HBAR / USD", kind: Kind.Outside, lower: LOWER, upper: UPPER, decimals: 8, expiry }),
+    ).toBe("Will HBAR / USD be outside 0.1 and 0.12 at 9 Oct 2026, 16:00 UTC?");
   });
 
   it("describes the condition alone", () => {
     expect(conditionText(Kind.Above, LOWER, 0n, 8)).toBe("be above 0.1");
     expect(conditionText(Kind.Scalar, LOWER, UPPER, 8)).toBe("settle between 0.1 and 0.12");
+    expect(conditionText(Kind.Outside, LOWER, UPPER, 8)).toBe("be outside 0.1 and 0.12");
   });
 });
 
@@ -129,5 +155,19 @@ describe("diagram helpers", () => {
     expect(prices).toContain(UPPER);
     for (let i = 1; i < prices.length; i++) expect(prices[i] > prices[i - 1]).toBe(true);
     for (const point of points) expect(point.yes + point.no).toBe(FULL);
+  });
+
+  it("draws Outside as full payout on both sides of the range and nothing inside it", () => {
+    const { min, max } = priceDomain(Kind.Outside, LOWER, UPPER);
+    expect(min).toBe(9_000_000n);
+    expect(max).toBe(13_000_000n);
+    const points = payoffPoints(Kind.Outside, LOWER, UPPER, min, max, 8);
+    const at = (price: bigint) => points.find(point => point.price === price)?.yes;
+    expect(at(min)).toBe(FULL);
+    expect(at(LOWER - 1n)).toBe(FULL);
+    expect(at(LOWER)).toBe(0n);
+    expect(at(UPPER - 1n)).toBe(0n);
+    expect(at(UPPER)).toBe(FULL);
+    expect(at(max)).toBe(FULL);
   });
 });

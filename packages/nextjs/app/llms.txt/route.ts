@@ -27,6 +27,7 @@ export async function GET() {
     "- Below: YES pays 1 HBAR when the price is below the strike at expiry.",
     "- Between: YES pays 1 HBAR when the price is at or above the lower bound and below the upper bound.",
     "- Scalar: YES pays a share of 1 HBAR rising linearly from the floor to the cap.",
+    "- Outside: YES pays 1 HBAR when the price is below the lower bound or at or above the upper bound.",
     "In every kind NO pays 1 HBAR minus what YES pays.",
     "",
     "## Contracts on Hedera testnet (chain 296)",

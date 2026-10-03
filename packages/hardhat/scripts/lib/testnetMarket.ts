@@ -29,8 +29,14 @@ export const GAS = {
   call: 1_000_000n,
 } as const;
 
-export const KIND = { Above: 0, Below: 1, Between: 2, Scalar: 3 } as const;
-export const KIND_NAMES = ["Above", "Below", "Between", "Scalar"] as const;
+export const KIND = { Above: 0, Below: 1, Between: 2, Scalar: 3, Outside: 4 } as const;
+export const KIND_NAMES = ["Above", "Below", "Between", "Scalar", "Outside"] as const;
+
+/** Whether a kind uses `upper`. Above and Below have a single strike; the contract stores their upper as 0. */
+export function kindUsesUpper(kind: number): boolean {
+  return kind === KIND.Between || kind === KIND.Scalar || kind === KIND.Outside;
+}
+
 export const STATUS_NAMES = ["Open", "Settled", "Void"] as const;
 
 /** Hardhat's well-known first account, which the config falls back to when no deployer key is set. */

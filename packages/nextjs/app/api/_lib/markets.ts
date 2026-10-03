@@ -1,6 +1,7 @@
 import { formatUnits } from "viem";
 import { RESOLVER_ABI, getDeployedContract, verdictPublicClient } from "~~/app/api/_lib/verdict";
 import { evmToContractId, evmToHederaId } from "~~/lib/mirror";
+import { isKind, kindUsesUpper } from "~~/lib/payoff";
 import { isoDate, kindName, questionText } from "~~/lib/question";
 import verdictConfig from "~~/verdict.config";
 
@@ -179,7 +180,7 @@ export async function marketToJson(id: bigint, raw: RawMarket): Promise<MarketJs
 
   const yesReserve = reserves ? ("yesReserve" in reserves ? reserves.yesReserve : reserves[0]) : null;
   const hbarReserve = reserves ? ("hbarReserve" in reserves ? reserves.hbarReserve : reserves[1]) : null;
-  const usesUpper = raw.kind === 2 || raw.kind === 3;
+  const usesUpper = isKind(raw.kind) && kindUsesUpper(raw.kind);
   const settled = raw.status === 1 || raw.status === 2;
 
   return {

@@ -1,5 +1,5 @@
 import { feedAnswerToPrice } from "~~/lib/format";
-import { type Kind, payoffPoints, priceDomain } from "~~/lib/payoff";
+import { type Kind, kindUsesUpper, payoffPoints, priceDomain } from "~~/lib/payoff";
 
 type PayoffDiagramProps = {
   kind: Kind;
@@ -29,7 +29,7 @@ export const PayoffDiagram = ({ kind, lower, upper, decimals, current, feedLabel
   const toPath = (pick: (p: (typeof points)[number]) => bigint) =>
     points.map((p, i) => `${i === 0 ? "M" : "L"}${x(p.price).toFixed(1)},${y(pick(p)).toFixed(1)}`).join(" ");
   const markers = [{ price: lower, label: feedAnswerToPrice(lower, decimals, 4) }];
-  if (kind === 2 || kind === 3) markers.push({ price: upper, label: feedAnswerToPrice(upper, decimals, 4) });
+  if (kindUsesUpper(kind)) markers.push({ price: upper, label: feedAnswerToPrice(upper, decimals, 4) });
   const bottom = PAD.top + plotHeight;
 
   return (

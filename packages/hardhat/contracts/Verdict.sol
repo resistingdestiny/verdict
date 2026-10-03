@@ -90,7 +90,7 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
     ) external payable override nonReentrant returns (uint256 id) {
         if (!resolverAllowed[resolver]) revert ResolverNotAllowed(resolver);
         _checkExpiry(expiry);
-        if (kind == Kind.Between || kind == Kind.Scalar) {
+        if (kind == Kind.Between || kind == Kind.Scalar || kind == Kind.Outside) {
             if (upper <= lower) revert InvalidBounds();
         } else {
             upper = 0;
@@ -252,6 +252,7 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         if (kind == Kind.Above) return answer > lower ? ONE_HBAR : 0;
         if (kind == Kind.Below) return answer < lower ? ONE_HBAR : 0;
         if (kind == Kind.Between) return (answer >= lower && answer < upper) ? ONE_HBAR : 0;
+        if (kind == Kind.Outside) return (answer < lower || answer >= upper) ? ONE_HBAR : 0;
         if (answer <= lower) return 0;
         if (answer >= upper) return ONE_HBAR;
         return uint64((uint256(answer - lower) * ONE_HBAR) / uint256(upper - lower));

@@ -34,7 +34,7 @@ const RPC_URL = process.env.HEDERA_RPC_URL ?? "https://testnet.hashio.io/api";
 const MIRROR_BASE_URL = process.env.HEDERA_MIRROR_URL ?? "https://testnet.mirrornode.hedera.com";
 const MESSAGE_MAX_BYTES = 1000;
 
-const KIND_NAMES = ["Above", "Below", "Between", "Scalar"] as const;
+const KIND_NAMES = ["Above", "Below", "Between", "Scalar", "Outside"] as const;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const MARKET_CREATED_SIG =
@@ -195,7 +195,7 @@ async function buildMarketCreated(id: bigint, market: MarketView, verdictAddress
     feed = null;
   }
   const txHash = await findEventHash(verdictAddress, MARKET_CREATED_SIG, id);
-  const usesUpper = market.kind === 2 || market.kind === 3;
+  const usesUpper = market.kind === 2 || market.kind === 3 || market.kind === 4;
   return {
     v: 1,
     type: "market_created",

@@ -195,11 +195,11 @@ describe("Verdict", function () {
       expect(await verdict.marketCount()).to.equal(2n);
     });
 
-    it("validates bounds per kind: Between and Scalar need upper > lower, Above and Below store upper as 0", async function () {
+    it("validates bounds per kind: Between, Scalar and Outside need upper > lower, Above and Below store upper as 0", async function () {
       const ctx = await loadFixture(deployVerdict);
       const { verdict, alice, resolver, feedId, creationCost } = ctx;
       const expiry = (await now()) + HOUR;
-      for (const kind of [Kind.Between, Kind.Scalar]) {
+      for (const kind of [Kind.Between, Kind.Scalar, Kind.Outside]) {
         await expect(
           verdict.connect(alice).createMarket(resolver, feedId, kind, 100n, 100n, expiry, { value: creationCost }),
         ).to.be.revertedWithCustomError(verdict, "InvalidBounds");
@@ -210,9 +210,11 @@ describe("Verdict", function () {
       const above = await createMarket(ctx, { kind: Kind.Above, lower: 100n, upper: 5n });
       const below = await createMarket(ctx, { kind: Kind.Below, lower: 100n, upper: 5n });
       const between = await createMarket(ctx, { kind: Kind.Between, lower: 100n, upper: 101n });
+      const outside = await createMarket(ctx, { kind: Kind.Outside, lower: 100n, upper: 101n });
       expect((await verdict.getMarket(above.id)).upper).to.equal(0n);
       expect((await verdict.getMarket(below.id)).upper).to.equal(0n);
       expect((await verdict.getMarket(between.id)).upper).to.equal(101n);
+      expect((await verdict.getMarket(outside.id)).upper).to.equal(101n);
     });
 
     it("refuses a feed the resolver does not know, with the resolver's own error", async function () {
@@ -282,6 +284,23 @@ describe("Verdict", function () {
           [2001n, FULL],
         ],
       },
+      {
+        kind: Kind.Outside,
+        lower: 1000n,
+        upper: 2000n,
+        rows: [
+          [500n, FULL],
+          [999n, FULL],
+          [1000n, 0n],
+          [1001n, 0n],
+          [1500n, 0n],
+          [1999n, 0n],
+          [2000n, FULL],
+          [2001n, FULL],
+          [2500n, FULL],
+          [-5n, FULL],
+        ],
+      },
     ];
     for (const table of tables) {
       it(`${Kind[table.kind]} pays by the brief's rule at each bound, just either side, and the midpoint`, async function () {
@@ -299,6 +318,15 @@ describe("Verdict", function () {
       expect(await verdict.payoutFor(Kind.Scalar, -1000n, 1000n, 0n)).to.equal(HALF);
       expect(await verdict.payoutFor(Kind.Scalar, -1000n, 1000n, -500n)).to.equal(25_000_000n);
     });
+
+    it("Outside is the complement of Between: the two YES payouts add up to 1 HBAR at every answer", async function () {
+      const { verdict } = await loadFixture(deployVerdict);
+      for (const answer of [-5n, 999n, 1000n, 1001n, 1500n, 1999n, 2000n, 2001n]) {
+        const between = await verdict.payoutFor(Kind.Between, 1000n, 2000n, answer);
+        const outside = await verdict.payoutFor(Kind.Outside, 1000n, 2000n, answer);
+        expect(between + outside, `answer ${answer}`).to.equal(FULL);
+      }
+    });
   });
 
   describe("full lifecycle per kind (brief item 1)", function () {
@@ -307,6 +335,7 @@ describe("Verdict", function () {
       { kind: Kind.Below, lower: 1000n, upper: 0n, answer: 1500n, payout: 0n },
       { kind: Kind.Between, lower: 1000n, upper: 2000n, answer: 1500n, payout: ONE_HBAR },
       { kind: Kind.Scalar, lower: 1000n, upper: 2000n, answer: 1250n, payout: 25_000_000n },
+      { kind: Kind.Outside, lower: 1000n, upper: 2000n, answer: 2000n, payout: ONE_HBAR },
     ];
     for (const c of cases) {
       it(`${Kind[c.kind]}: create, split, merge, scheduled resolve, redeem, with collateral and supply checked at each step`, async function () {

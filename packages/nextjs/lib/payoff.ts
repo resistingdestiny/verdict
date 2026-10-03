@@ -2,7 +2,8 @@ import { PAYOUT_SCALE, feedAnswerToPrice, formatUtc } from "./format";
 
 /**
  * The payoff rule, mirrored from Verdict.sol so the app can draw diagrams and label markets without a
- * contract call. Adding a kind is one enum value, one branch in `payoutFor` and one test table.
+ * contract call. Adding a kind touches the `Kind` const, `KINDS`, the label and description maps,
+ * `kindUsesUpper`, and the `payoutFor` and `conditionText` switches.
  */
 
 export const Kind = {
@@ -10,17 +11,19 @@ export const Kind = {
   Below: 1,
   Between: 2,
   Scalar: 3,
+  Outside: 4,
 } as const;
 
 export type Kind = (typeof Kind)[keyof typeof Kind];
 
-export const KINDS: readonly Kind[] = [Kind.Above, Kind.Below, Kind.Between, Kind.Scalar];
+export const KINDS: readonly Kind[] = [Kind.Above, Kind.Below, Kind.Between, Kind.Scalar, Kind.Outside];
 
 export const KIND_LABELS: Record<Kind, string> = {
   [Kind.Above]: "Above",
   [Kind.Below]: "Below",
   [Kind.Between]: "Between",
   [Kind.Scalar]: "Scalar",
+  [Kind.Outside]: "Outside",
 };
 
 export const KIND_DESCRIPTIONS: Record<Kind, string> = {
@@ -29,6 +32,7 @@ export const KIND_DESCRIPTIONS: Record<Kind, string> = {
   [Kind.Between]: "YES pays 1 HBAR when the price is at or above the lower bound and below the upper bound.",
   [Kind.Scalar]:
     "YES pays a share of 1 HBAR that rises in a straight line from nothing at the floor to all of it at the cap.",
+  [Kind.Outside]: "YES pays 1 HBAR when the price is below the lower bound or at or above the upper bound.",
 };
 
 export function isKind(value: number): value is Kind {
@@ -37,7 +41,7 @@ export function isKind(value: number): value is Kind {
 
 /** Whether the kind uses `upper`. Above and Below have a single strike. */
 export function kindUsesUpper(kind: Kind): boolean {
-  return kind === Kind.Between || kind === Kind.Scalar;
+  return kind === Kind.Between || kind === Kind.Scalar || kind === Kind.Outside;
 }
 
 /** Bounds are valid when `lower < upper` for two-bound kinds. Single-strike kinds accept any strike. */
@@ -62,6 +66,8 @@ export function payoutFor(kind: Kind, lower: bigint, upper: bigint, answer: bigi
       if (answer >= upper) return PAYOUT_SCALE;
       return ((answer - lower) * PAYOUT_SCALE) / (upper - lower);
     }
+    case Kind.Outside:
+      return answer < lower || answer >= upper ? PAYOUT_SCALE : 0n;
   }
 }
 
@@ -92,6 +98,8 @@ export function conditionText(kind: Kind, lower: bigint, upper: bigint, decimals
       return `be between ${lo} and ${hi}`;
     case Kind.Scalar:
       return `settle between ${lo} and ${hi}`;
+    case Kind.Outside:
+      return `be outside ${lo} and ${hi}`;
   }
 }
 

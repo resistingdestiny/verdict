@@ -41,7 +41,7 @@ const action = fc.oneof(
     arbitrary: fc.record({
       type: fc.constant("createMarket" as const),
       actor,
-      kind: fc.nat({ max: 3 }).noBias(),
+      kind: fc.nat({ max: Kind.Outside }).noBias(),
       lower: fc.bigInt({ min: 1n, max: 10n ** 12n }),
       width: fc.bigInt({ min: 0n, max: 10n ** 11n }),
       lead: fc.oneof(

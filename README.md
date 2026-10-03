@@ -131,9 +131,9 @@ sequenceDiagram
 
 One market, end to end. A creator asks whether HBAR/USD will be above 0.12 at 16:00 UTC next Friday. `createMarket` creates the YES and NO tokens through the Hedera Token Service, with the contract as treasury and supply key, and schedules its own `resolveScheduled` call for the expiry through the Hedera Schedule Service. Until expiry, anyone can pay 1 HBAR to `split` and receive 1 YES and 1 NO, or hand back one of each to `merge` for 1 HBAR. The creator splits 20 HBAR and seeds a SaucerSwap pool with 20 YES against 10 HBAR, so YES opens at 0.5 HBAR: the market's first odds. Traders buy and sell YES through the router, and the pool price moves with their flow. At the expiry second the scheduled call fires with no account sending it, reads the Chainlink round that was current at that second, and fixes the YES payout. If the feed has no fresh round, nobody can resolve, and 24 hours later anyone can call `voidMarket`, which fixes the payout at 0.5 HBAR. Holders then `redeem`: each YES burns for the payout and each NO for 1 HBAR minus the payout. The market terms and the settlement reading are posted to an HCS topic that anyone can read through the mirror node.
 
-## The four market kinds
+## The five market kinds
 
-All four kinds share one mechanism; only the payoff rule differs. Bounds are stored in the feed's own decimals. The diagrams show what one YES and one NO pay across the price at expiry.
+All five kinds share one mechanism; only the payoff rule differs. Bounds are stored in the feed's own decimals. The diagrams show what one YES and one NO pay across the price at expiry.
 
 **Above.** YES pays 1 HBAR when the answer is greater than the strike, otherwise nothing.
 
@@ -150,6 +150,10 @@ All four kinds share one mechanism; only the payoff rule differs. Bounds are sto
 **Scalar.** YES pays a share of 1 HBAR that rises in a straight line from nothing at the floor to all of it at the cap: `(answer - floor) / (cap - floor)`, clamped to the range.
 
 ![Scalar payoff](docs/img/payoff-scalar.svg)
+
+**Outside.** YES pays 1 HBAR when the answer is below the lower bound or at or above the upper bound, otherwise nothing. It is the complement of Between: at every answer the two YES payouts add up to 1 HBAR.
+
+![Outside payoff](docs/img/payoff-outside.svg)
 
 ## What each Hedera service does here
 

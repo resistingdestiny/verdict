@@ -9,7 +9,7 @@ import { formatUnits } from "viem";
 export type QuestionTerms = {
   /** Human-readable feed name from the resolver, for example "HBAR / USD". */
   feed: string | null;
-  /** Market kind as the contract enum index (0 Above, 1 Below, 2 Between, 3 Scalar) or its name. */
+  /** Market kind as the contract enum index (0 Above, 1 Below, 2 Between, 3 Scalar, 4 Outside) or its name. */
   kind: number | string;
   lower: bigint;
   upper: bigint;
@@ -19,7 +19,7 @@ export type QuestionTerms = {
   expiry: bigint | number;
 };
 
-const KIND_NAMES = ["Above", "Below", "Between", "Scalar"] as const;
+const KIND_NAMES = ["Above", "Below", "Between", "Scalar", "Outside"] as const;
 
 export function kindName(kind: number | string): string {
   if (typeof kind === "string") return kind;
@@ -42,6 +42,8 @@ export function questionText(terms: QuestionTerms): string {
       return `Will ${feed} be below ${lower} at ${when}?`;
     case "Between":
       return `Will ${feed} be between ${lower} and ${upper} at ${when}?`;
+    case "Outside":
+      return `Will ${feed} be outside ${lower} and ${upper} at ${when}?`;
     default:
       return `Where will ${feed} land between ${lower} and ${upper} at ${when}?`;
   }

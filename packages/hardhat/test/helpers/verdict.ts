@@ -23,6 +23,7 @@ export enum Kind {
   Below = 1,
   Between = 2,
   Scalar = 3,
+  Outside = 4,
 }
 
 export enum Status {
