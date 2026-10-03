@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { formatUnits } from "viem";
-
 import { trimDecimal } from "~~/app/api/_lib/markets";
 import { VERDICT_CHAIN_ID, getDeployedContract, verdictPublicClient } from "~~/app/api/_lib/verdict";
 
@@ -41,7 +40,8 @@ export async function GET(req: Request) {
   if (!idParam || !/^\d+$/.test(idParam)) return jsonError(400, "Query param id must be a non-negative integer");
   if (!trade || !TRADES.includes(trade)) return jsonError(400, `Query param trade must be one of ${TRADES.join(", ")}`);
   const amount = Number(amountParam);
-  if (!amountParam || !Number.isFinite(amount) || amount <= 0) return jsonError(400, "Query param amount must be a positive number");
+  if (!amountParam || !Number.isFinite(amount) || amount <= 0)
+    return jsonError(400, "Query param amount must be a positive number");
 
   const router = getDeployedContract("VerdictRouter");
   if (!router) {
@@ -92,7 +92,10 @@ export async function GET(req: Request) {
       quote: {
         id: Number(id),
         trade,
-        input: { amount: trimDecimal(amount.toFixed(8)), unit: HBAR_IN[trade] ? "HBAR" : trade === "sellYes" ? "YES" : "NO" },
+        input: {
+          amount: trimDecimal(amount.toFixed(8)),
+          unit: HBAR_IN[trade] ? "HBAR" : trade === "sellYes" ? "YES" : "NO",
+        },
         output,
         units: "Outputs are in HBAR and whole tokens (8 decimals). Raw values are tinybars or token units.",
         raw: { amountIn: amountIn.toString(), ...raw_out },

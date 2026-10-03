@@ -48,7 +48,7 @@ export async function GET() {
     "- GET /api/markets/{id}: one market.",
     "- GET /api/quote?id={id}&trade={buyYes|sellYes|buyNo|sellNo}&amount={n}: quote in HBAR and whole-token units.",
     "  amount is HBAR for buy trades and whole tokens for sell trades. Both carry 8 decimals on the ledger.",
-    "- POST /api/record with {\"txHash\": \"0x...\"} or {\"marketId\": 3}: writes the market's HCS record messages.",
+    '- POST /api/record with {"txHash": "0x..."} or {"marketId": 3}: writes the market\'s HCS record messages.',
     "  Idempotent. Needs no credentials from the caller; the server holds the topic submit key.",
     "",
     "## How an agent trades",

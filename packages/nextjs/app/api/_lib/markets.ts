@@ -1,5 +1,4 @@
 import { formatUnits } from "viem";
-
 import { RESOLVER_ABI, getDeployedContract, verdictPublicClient } from "~~/app/api/_lib/verdict";
 import { evmToContractId, evmToHederaId } from "~~/lib/mirror";
 import { isoDate, kindName, questionText } from "~~/lib/question";
@@ -172,7 +171,9 @@ export async function marketToJson(id: bigint, raw: RawMarket): Promise<MarketJs
     routerView<string>("pairOf", id),
   ]);
 
-  const contractId = contract ? await evmToContractId(contract.address, { baseUrl: verdictConfig.mirrorNodeUrl }) : null;
+  const contractId = contract
+    ? await evmToContractId(contract.address, { baseUrl: verdictConfig.mirrorNodeUrl })
+    : null;
   const hasPair = pair && pair.toLowerCase() !== ZERO_ADDRESS;
   const pairId = hasPair ? await hederaId(pair) : null;
 
@@ -183,7 +184,14 @@ export async function marketToJson(id: bigint, raw: RawMarket): Promise<MarketJs
 
   return {
     id: Number(id),
-    question: questionText({ feed, kind: raw.kind, lower: raw.lower, upper: raw.upper, decimals: raw.decimals, expiry: raw.expiry }),
+    question: questionText({
+      feed,
+      kind: raw.kind,
+      lower: raw.lower,
+      upper: raw.upper,
+      decimals: raw.decimals,
+      expiry: raw.expiry,
+    }),
     feed,
     feedId: raw.feedId,
     kind: kindName(raw.kind),
@@ -199,7 +207,10 @@ export async function marketToJson(id: bigint, raw: RawMarket): Promise<MarketJs
     pair: hasPair ? { evm: pair, id: pairId } : null,
     odds:
       probability !== null && probability !== undefined
-        ? { impliedProbability: trimDecimal(formatUnits(probability, 8)), percent: trimDecimal((Number(probability) / 1e6).toFixed(4)) }
+        ? {
+            impliedProbability: trimDecimal(formatUnits(probability, 8)),
+            percent: trimDecimal((Number(probability) / 1e6).toFixed(4)),
+          }
         : null,
     reserves:
       yesReserve !== null && yesReserve !== undefined && hbarReserve !== null && hbarReserve !== undefined

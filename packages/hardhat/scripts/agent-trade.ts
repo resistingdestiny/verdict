@@ -30,7 +30,15 @@ type QuoteResponse = {
 };
 
 function loadInterfaceAbi(name: string): ethers.InterfaceAbi {
-  const artifactPath = path.join(__dirname, "..", "artifacts", "contracts", "interfaces", `${name}.sol`, `${name}.json`);
+  const artifactPath = path.join(
+    __dirname,
+    "..",
+    "artifacts",
+    "contracts",
+    "interfaces",
+    `${name}.sol`,
+    `${name}.json`,
+  );
   const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8")) as { abi: ethers.InterfaceAbi };
   return artifact.abi;
 }
@@ -62,13 +70,19 @@ async function main() {
   console.log(`Market ${market.id}: ${market.question}`);
   console.log(`Expiry: ${market.expiry}`);
 
-  const quote = await fetchJson<QuoteResponse>(`${APP_URL}/api/quote?id=${market.id}&trade=buyYes&amount=${amountHbar}`);
+  const quote = await fetchJson<QuoteResponse>(
+    `${APP_URL}/api/quote?id=${market.id}&trade=buyYes&amount=${amountHbar}`,
+  );
   if (!quote.quote || !quote.router) {
-    throw new Error(`No quote for market ${market.id}: ${quote.error ?? "unknown"}${quote.detail ? ` (${quote.detail})` : ""}`);
+    throw new Error(
+      `No quote for market ${market.id}: ${quote.error ?? "unknown"}${quote.detail ? ` (${quote.detail})` : ""}`,
+    );
   }
   const yesOut = BigInt(quote.quote.raw.yesOut);
   const minYesOut = (yesOut * (10_000n - SLIPPAGE_BPS)) / 10_000n;
-  console.log(`Quote: ${amountHbar} HBAR buys about ${ethers.formatUnits(yesOut, 8)} YES (min ${ethers.formatUnits(minYesOut, 8)})`);
+  console.log(
+    `Quote: ${amountHbar} HBAR buys about ${ethers.formatUnits(yesOut, 8)} YES (min ${ethers.formatUnits(minYesOut, 8)})`,
+  );
 
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   const wallet = new ethers.Wallet(privateKey, provider);
@@ -79,7 +93,9 @@ async function main() {
   const valueWeibars = amountTinybars * 10n ** 10n;
 
   const deadline = Math.floor(Date.now() / 1000) + DEADLINE_SECONDS;
-  const tx = (await router.buyYes(market.id, minYesOut, deadline, { value: valueWeibars })) as ethers.ContractTransactionResponse;
+  const tx = (await router.buyYes(market.id, minYesOut, deadline, {
+    value: valueWeibars,
+  })) as ethers.ContractTransactionResponse;
   console.log(`Sent: ${HASHSCAN_TX}/${tx.hash}`);
   const receipt = await tx.wait();
   console.log(`Confirmed in block ${receipt?.blockNumber}: ${HASHSCAN_TX}/${tx.hash}`);

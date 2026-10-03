@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-
 import { marketToJson, readMarketCount, readMarketRaw } from "~~/app/api/_lib/markets";
 import { VERDICT_CHAIN_ID, getDeployedContract } from "~~/app/api/_lib/verdict";
 
@@ -28,7 +27,12 @@ export async function GET() {
     return NextResponse.json({ chainId: VERDICT_CHAIN_ID, contract: contract.address, markets });
   } catch (e) {
     return NextResponse.json(
-      { chainId: VERDICT_CHAIN_ID, contract: contract.address, markets: [], error: e instanceof Error ? e.message : String(e) },
+      {
+        chainId: VERDICT_CHAIN_ID,
+        contract: contract.address,
+        markets: [],
+        error: e instanceof Error ? e.message : String(e),
+      },
       { status: 502 },
     );
   }

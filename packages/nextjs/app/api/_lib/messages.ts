@@ -87,7 +87,14 @@ export function fixed8(value: bigint): string {
 
 export function buildMarketCreatedMessage(
   args: MarketCreatedEventArgs,
-  ids: { contract: string | null; feed: string | null; yes: string | null; no: string | null; schedule: string | null; tx: string | null },
+  ids: {
+    contract: string | null;
+    feed: string | null;
+    yes: string | null;
+    no: string | null;
+    schedule: string | null;
+    tx: string | null;
+  },
 ): MarketCreatedMessage {
   const usesUpper = args.kind === 2 || args.kind === 3;
   return {
@@ -107,7 +114,11 @@ export function buildMarketCreatedMessage(
   };
 }
 
-export function buildResolvedMessage(args: ResolvedEventArgs, decimals: number, tx: string | null): MarketSettledMessage {
+export function buildResolvedMessage(
+  args: ResolvedEventArgs,
+  decimals: number,
+  tx: string | null,
+): MarketSettledMessage {
   return {
     v: 1,
     type: "market_settled",

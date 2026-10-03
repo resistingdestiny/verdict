@@ -1,6 +1,5 @@
 import { type Abi, type Address, createPublicClient, http } from "viem";
 import { hederaTestnet } from "viem/chains";
-
 import deployedContracts from "~~/contracts/deployedContracts";
 import scaffoldConfig from "~~/scaffold.config";
 

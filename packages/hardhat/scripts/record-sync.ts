@@ -136,7 +136,15 @@ function readVerdictAddress(): string | null {
 }
 
 function loadInterfaceAbi(name: string): ethers.InterfaceAbi {
-  const artifactPath = path.join(__dirname, "..", "artifacts", "contracts", "interfaces", `${name}.sol`, `${name}.json`);
+  const artifactPath = path.join(
+    __dirname,
+    "..",
+    "artifacts",
+    "contracts",
+    "interfaces",
+    `${name}.sol`,
+    `${name}.json`,
+  );
   const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8")) as { abi: ethers.InterfaceAbi };
   return artifact.abi;
 }
@@ -246,7 +254,8 @@ async function syncViaApi(topicId: string): Promise<void> {
       signal: AbortSignal.timeout(30_000),
     });
     const result = (await post.json()) as { written?: unknown[]; error?: string; detail?: string };
-    if (!post.ok) throw new Error(`Market ${m.id}: ${result.error ?? post.status}${result.detail ? ` (${result.detail})` : ""}`);
+    if (!post.ok)
+      throw new Error(`Market ${m.id}: ${result.error ?? post.status}${result.detail ? ` (${result.detail})` : ""}`);
     console.log(`Market ${m.id}: wrote ${result.written?.length ?? 0} message(s).`);
   }
 }
@@ -263,7 +272,10 @@ async function syncDirect(topicId: string, operatorId: string, operatorKey: stri
   console.log(`${count} market(s) on chain.`);
 
   const sdk = loadSdk();
-  const client = sdk.Client.forTestnet().setOperator(sdk.AccountId.fromString(operatorId), sdk.PrivateKey.fromString(operatorKey));
+  const client = sdk.Client.forTestnet().setOperator(
+    sdk.AccountId.fromString(operatorId),
+    sdk.PrivateKey.fromString(operatorKey),
+  );
   let written = 0;
   try {
     for (let i = 0n; i < count; i++) {

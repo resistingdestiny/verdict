@@ -119,7 +119,10 @@ function encodeQuery(params: Record<string, string | number | undefined>): strin
 }
 
 /** Contract result (including logs) for one transaction hash, for example `0x...`. */
-export async function getContractResultByHash(txHash: string, options: MirrorOptions = {}): Promise<MirrorContractResult> {
+export async function getContractResultByHash(
+  txHash: string,
+  options: MirrorOptions = {},
+): Promise<MirrorContractResult> {
   return mirrorGet<MirrorContractResult>(`/api/v1/contracts/results/${txHash}`, options);
 }
 
@@ -216,7 +219,10 @@ export async function getAllTopicMessages(
     }
     pages += 1;
     if (!page.next || pages >= MAX_PAGES) break;
-    const data = await mirrorGet<{ messages: MirrorTopicMessage[]; links: { next: string | null } }>(page.next, options);
+    const data = await mirrorGet<{ messages: MirrorTopicMessage[]; links: { next: string | null } }>(
+      page.next,
+      options,
+    );
     page = { items: data.messages ?? [], next: data.links?.next ?? null };
   }
   return out;

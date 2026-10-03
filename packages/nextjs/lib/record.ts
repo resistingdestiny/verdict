@@ -31,7 +31,8 @@ export function parseRecordPayload(text: string): RecordMessagePayload | null {
       typeof parsed === "object" &&
       parsed !== null &&
       (parsed as { v?: unknown }).v === 1 &&
-      ((parsed as { type?: unknown }).type === "market_created" || (parsed as { type?: unknown }).type === "market_settled") &&
+      ((parsed as { type?: unknown }).type === "market_created" ||
+        (parsed as { type?: unknown }).type === "market_settled") &&
       typeof (parsed as { market?: unknown }).market === "number"
     ) {
       return parsed as RecordMessagePayload;
@@ -59,7 +60,9 @@ export async function syncRecord(marketId: number): Promise<SyncRecordResult> {
   });
   const data = (await res.json()) as SyncRecordResult & { error?: string; detail?: string };
   if (!res.ok) {
-    throw new Error(data.detail ? `${data.error}: ${data.detail}` : data.error ?? `Record sync failed with status ${res.status}`);
+    throw new Error(
+      data.detail ? `${data.error}: ${data.detail}` : (data.error ?? `Record sync failed with status ${res.status}`),
+    );
   }
   return data;
 }
@@ -67,7 +70,5 @@ export async function syncRecord(marketId: number): Promise<SyncRecordResult> {
 /** Market ids that are settled or void but have no market_settled message in the feed. */
 export function marketsMissingSettlement(markets: { id: number; status: string }[], feed: FeedMessage[]): number[] {
   const recorded = new Set(feed.filter(m => m.payload?.type === "market_settled").map(m => m.payload?.market));
-  return markets
-    .filter(m => (m.status === "Settled" || m.status === "Void") && !recorded.has(m.id))
-    .map(m => m.id);
+  return markets.filter(m => (m.status === "Settled" || m.status === "Void") && !recorded.has(m.id)).map(m => m.id);
 }

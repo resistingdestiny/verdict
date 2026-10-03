@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
-
 import {
   MirrorError,
   decodeTopicMessageBody,
@@ -15,6 +13,7 @@ import {
   getTopicMessages,
   toTransactionId,
 } from "./mirror";
+import { describe, expect, it, vi } from "vitest";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -30,7 +29,14 @@ function mockFetchOnce(body: unknown, status = 200) {
 
 describe("getContractResultByHash", () => {
   it("fetches the contract result for a transaction hash", async () => {
-    const result = { from: "0xabc", to: "0xdef", hash: "0x123", timestamp: "2026-10-02T12:00:00.000Z", result: "SUCCESS", logs: [] };
+    const result = {
+      from: "0xabc",
+      to: "0xdef",
+      hash: "0x123",
+      timestamp: "2026-10-02T12:00:00.000Z",
+      result: "SUCCESS",
+      logs: [],
+    };
     const fetchImpl = mockFetchOnce(result);
     const data = await getContractResultByHash("0x123", { fetchImpl });
     expect(data.hash).toBe("0x123");
@@ -48,7 +54,9 @@ describe("getContractResultByHash", () => {
   });
 
   it("maps aborts to a TIMEOUT error", async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockRejectedValueOnce(Object.assign(new Error("timed out"), { name: "TimeoutError" }));
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(Object.assign(new Error("timed out"), { name: "TimeoutError" }));
     await expect(getContractResultByHash("0x123", { fetchImpl })).rejects.toMatchObject({
       code: "TIMEOUT",
       status: null,
@@ -85,7 +93,9 @@ describe("getContractLogs", () => {
   it("follows pagination in getAllContractLogs", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(jsonResponse({ logs: [{ index: 1 }], links: { next: "/api/v1/contracts/0xdef/results/logs?cursor=a" } }))
+      .mockResolvedValueOnce(
+        jsonResponse({ logs: [{ index: 1 }], links: { next: "/api/v1/contracts/0xdef/results/logs?cursor=a" } }),
+      )
       .mockResolvedValueOnce(jsonResponse({ logs: [{ index: 2 }], links: { next: null } }));
     const logs = await getAllContractLogs("0xdef", {}, { fetchImpl });
     expect(logs.map(l => l.index)).toEqual([1, 2]);
@@ -138,7 +148,9 @@ describe("getAccountTokens", () => {
   it("follows pagination and flattens tokens", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(jsonResponse({ tokens: [{ token_id: "0.0.1" }], links: { next: "/api/v1/accounts/0.0.9/tokens?cursor=c" } }))
+      .mockResolvedValueOnce(
+        jsonResponse({ tokens: [{ token_id: "0.0.1" }], links: { next: "/api/v1/accounts/0.0.9/tokens?cursor=c" } }),
+      )
       .mockResolvedValueOnce(jsonResponse({ tokens: [{ token_id: "0.0.2" }], links: { next: null } }));
     const tokens = await getAccountTokens("0.0.9", { fetchImpl });
     expect(tokens.map(t => t.token_id)).toEqual(["0.0.1", "0.0.2"]);

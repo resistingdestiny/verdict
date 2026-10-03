@@ -1,7 +1,6 @@
-import { AccountId, Client, PrivateKey, TopicId, TopicMessageSubmitTransaction } from "@hiero-ledger/sdk";
 import { NextResponse } from "next/server";
+import { AccountId, Client, PrivateKey, TopicId, TopicMessageSubmitTransaction } from "@hiero-ledger/sdk";
 import { type AbiEvent, decodeEventLog, toEventSelector } from "viem";
-
 import {
   MarketCreatedEventArgs,
   RecordMessage,
@@ -15,7 +14,7 @@ import {
   parseMessageKey,
   serializeMessage,
 } from "~~/app/api/_lib/messages";
-import { RESOLVER_ABI, DeployedContract, getDeployedContract, verdictPublicClient } from "~~/app/api/_lib/verdict";
+import { DeployedContract, RESOLVER_ABI, getDeployedContract, verdictPublicClient } from "~~/app/api/_lib/verdict";
 import {
   MirrorError,
   evmToAccountId,
@@ -81,7 +80,11 @@ async function feedName(resolver: string, feedId: `0x${string}`): Promise<string
 
 type BuiltRecord = { key: string; message: RecordMessage };
 
-async function buildFromMarketCreated(args: MarketCreatedEventArgs, txHash: string, contractAddress: string): Promise<BuiltRecord> {
+async function buildFromMarketCreated(
+  args: MarketCreatedEventArgs,
+  txHash: string,
+  contractAddress: string,
+): Promise<BuiltRecord> {
   const mirror = { baseUrl: verdictConfig.mirrorNodeUrl };
   const [contract, feed, yes, no, schedule, tx] = await Promise.all([
     evmToContractId(contractAddress, mirror),
@@ -121,15 +124,29 @@ async function buildFromTransaction(txHash: string, contract: DeployedContract):
     const topic0 = log.topics[0];
     try {
       if (topic0 === selectors.MarketCreated) {
-        const decoded = decodeEventLog({ abi: contract.abi, data: log.data as `0x${string}`, topics: log.topics as [`0x${string}`, ...`0x${string}`[]] });
-        out.push(await buildFromMarketCreated(decoded.args as unknown as MarketCreatedEventArgs, txHash, contract.address));
+        const decoded = decodeEventLog({
+          abi: contract.abi,
+          data: log.data as `0x${string}`,
+          topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
+        });
+        out.push(
+          await buildFromMarketCreated(decoded.args as unknown as MarketCreatedEventArgs, txHash, contract.address),
+        );
       } else if (topic0 === selectors.Resolved) {
-        const decoded = decodeEventLog({ abi: contract.abi, data: log.data as `0x${string}`, topics: log.topics as [`0x${string}`, ...`0x${string}`[]] });
+        const decoded = decodeEventLog({
+          abi: contract.abi,
+          data: log.data as `0x${string}`,
+          topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
+        });
         const args = decoded.args as unknown as ResolvedEventArgs;
         const market = await readMarket(args.id);
         out.push(await buildFromResolved(args, txHash, market?.decimals ?? 8));
       } else if (topic0 === selectors.Voided) {
-        const decoded = decodeEventLog({ abi: contract.abi, data: log.data as `0x${string}`, topics: log.topics as [`0x${string}`, ...`0x${string}`[]] });
+        const decoded = decodeEventLog({
+          abi: contract.abi,
+          data: log.data as `0x${string}`,
+          topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
+        });
         out.push(await buildFromVoided(decoded.args as unknown as VoidedEventArgs, txHash));
       }
     } catch (e) {
@@ -162,7 +179,11 @@ async function readMarket(id: bigint): Promise<MarketView | null> {
 async function findEventLog(contractAddress: string, selector: `0x${string}` | null, marketId: bigint) {
   if (!selector) return null;
   const idTopic = `0x${marketId.toString(16).padStart(64, "0")}` as `0x${string}`;
-  const logs = await getAllContractLogs(contractAddress, { topics: [selector, idTopic], order: "asc", limit: 100 }, { baseUrl: verdictConfig.mirrorNodeUrl });
+  const logs = await getAllContractLogs(
+    contractAddress,
+    { topics: [selector, idTopic], order: "asc", limit: 100 },
+    { baseUrl: verdictConfig.mirrorNodeUrl },
+  );
   return logs[0] ?? null;
 }
 
@@ -177,21 +198,45 @@ async function buildForMarket(marketId: bigint, contract: DeployedContract): Pro
 
   const createdLog = await findEventLog(contract.address, selectors.MarketCreated, marketId);
   if (createdLog) {
-    const decoded = decodeEventLog({ abi: contract.abi, data: createdLog.data as `0x${string}`, topics: createdLog.topics as [`0x${string}`, ...`0x${string}`[]] });
-    out.push(await buildFromMarketCreated(decoded.args as unknown as MarketCreatedEventArgs, createdLog.transaction_hash, contract.address));
+    const decoded = decodeEventLog({
+      abi: contract.abi,
+      data: createdLog.data as `0x${string}`,
+      topics: createdLog.topics as [`0x${string}`, ...`0x${string}`[]],
+    });
+    out.push(
+      await buildFromMarketCreated(
+        decoded.args as unknown as MarketCreatedEventArgs,
+        createdLog.transaction_hash,
+        contract.address,
+      ),
+    );
   }
 
   const market = await readMarket(marketId);
   if (market && market.status === 1) {
     const resolvedLog = await findEventLog(contract.address, selectors.Resolved, marketId);
     if (resolvedLog) {
-      const decoded = decodeEventLog({ abi: contract.abi, data: resolvedLog.data as `0x${string}`, topics: resolvedLog.topics as [`0x${string}`, ...`0x${string}`[]] });
-      out.push(await buildFromResolved(decoded.args as unknown as ResolvedEventArgs, resolvedLog.transaction_hash, market.decimals));
+      const decoded = decodeEventLog({
+        abi: contract.abi,
+        data: resolvedLog.data as `0x${string}`,
+        topics: resolvedLog.topics as [`0x${string}`, ...`0x${string}`[]],
+      });
+      out.push(
+        await buildFromResolved(
+          decoded.args as unknown as ResolvedEventArgs,
+          resolvedLog.transaction_hash,
+          market.decimals,
+        ),
+      );
     }
   } else if (market && market.status === 2) {
     const voidedLog = await findEventLog(contract.address, selectors.Voided, marketId);
     if (voidedLog) {
-      const decoded = decodeEventLog({ abi: contract.abi, data: voidedLog.data as `0x${string}`, topics: voidedLog.topics as [`0x${string}`, ...`0x${string}`[]] });
+      const decoded = decodeEventLog({
+        abi: contract.abi,
+        data: voidedLog.data as `0x${string}`,
+        topics: voidedLog.topics as [`0x${string}`, ...`0x${string}`[]],
+      });
       out.push(await buildFromVoided(decoded.args as unknown as VoidedEventArgs, voidedLog.transaction_hash));
     }
   }
@@ -208,12 +253,20 @@ async function existingMessageKeys(topicId: string): Promise<Set<string>> {
   return keys;
 }
 
-async function submitToTopic(topicId: string, operatorId: string, operatorKey: string, messages: string[]): Promise<number[]> {
+async function submitToTopic(
+  topicId: string,
+  operatorId: string,
+  operatorKey: string,
+  messages: string[],
+): Promise<number[]> {
   const client = Client.forTestnet().setOperator(AccountId.fromString(operatorId), PrivateKey.fromString(operatorKey));
   try {
     const sequenceNumbers: number[] = [];
     for (const text of messages) {
-      const response = await new TopicMessageSubmitTransaction().setTopicId(TopicId.fromString(topicId)).setMessage(text).execute(client);
+      const response = await new TopicMessageSubmitTransaction()
+        .setTopicId(TopicId.fromString(topicId))
+        .setMessage(text)
+        .execute(client);
       const receipt = await response.getReceipt(client);
       sequenceNumbers.push(Number(receipt.topicSequenceNumber));
     }
@@ -235,7 +288,8 @@ export async function POST(req: Request) {
   } catch {
     return jsonError(400, "Invalid JSON body");
   }
-  const txHash = typeof (body as { txHash?: unknown })?.txHash === "string" ? (body as { txHash: string }).txHash : null;
+  const txHash =
+    typeof (body as { txHash?: unknown })?.txHash === "string" ? (body as { txHash: string }).txHash : null;
   const marketIdRaw = (body as { marketId?: unknown })?.marketId;
   const marketId =
     typeof marketIdRaw === "number" && Number.isInteger(marketIdRaw) && marketIdRaw >= 0
@@ -249,17 +303,29 @@ export async function POST(req: Request) {
 
   const topicId = verdictConfig.hcsTopicId;
   if (!topicId) {
-    return jsonError(503, "HCS topic not configured", "verdict.config.ts has no hcsTopicId yet; create the topic first.");
+    return jsonError(
+      503,
+      "HCS topic not configured",
+      "verdict.config.ts has no hcsTopicId yet; create the topic first.",
+    );
   }
   const operatorId = process.env.HEDERA_OPERATOR_ID;
   const operatorKey = process.env.HEDERA_OPERATOR_KEY;
   if (!operatorId || !operatorKey) {
-    return jsonError(503, "HCS operator not configured", "Set HEDERA_OPERATOR_ID and HEDERA_OPERATOR_KEY in the server environment.");
+    return jsonError(
+      503,
+      "HCS operator not configured",
+      "Set HEDERA_OPERATOR_ID and HEDERA_OPERATOR_KEY in the server environment.",
+    );
   }
 
   const contract = getDeployedContract("Verdict");
   if (!contract) {
-    return jsonError(503, "Verdict contract not deployed", "No Verdict entry for chain 296 in contracts/deployedContracts.ts.");
+    return jsonError(
+      503,
+      "Verdict contract not deployed",
+      "No Verdict entry for chain 296 in contracts/deployedContracts.ts.",
+    );
   }
 
   try {
@@ -267,7 +333,11 @@ export async function POST(req: Request) {
       ? await buildFromTransaction(txHash, contract)
       : await buildForMarket(marketId as bigint, contract);
     if (built.length === 0) {
-      return jsonError(404, "No Verdict event found", txHash ? `No MarketCreated, Resolved or Voided event in ${txHash}.` : `No events found for market ${marketId}.`);
+      return jsonError(
+        404,
+        "No Verdict event found",
+        txHash ? `No MarketCreated, Resolved or Voided event in ${txHash}.` : `No events found for market ${marketId}.`,
+      );
     }
 
     const existing = await existingMessageKeys(topicId);
@@ -282,7 +352,11 @@ export async function POST(req: Request) {
     const sequenceNumbers = await submitToTopic(topicId, operatorId, operatorKey, texts);
 
     return NextResponse.json({
-      written: fresh.map((b, i) => ({ type: b.message.type, market: b.message.market, sequenceNumber: sequenceNumbers[i] })),
+      written: fresh.map((b, i) => ({
+        type: b.message.type,
+        market: b.message.market,
+        sequenceNumber: sequenceNumbers[i],
+      })),
       skipped,
       topic: topicId,
     });

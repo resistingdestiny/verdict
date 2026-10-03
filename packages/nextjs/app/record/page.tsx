@@ -33,7 +33,11 @@ function MessageCard({ message }: { message: FeedMessage }) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className={`badge ${payload?.type === "market_settled" ? "badge-accent" : "badge-primary"}`}>
-              {payload?.type === "market_settled" ? "Settled" : payload?.type === "market_created" ? "Created" : "Message"}
+              {payload?.type === "market_settled"
+                ? "Settled"
+                : payload?.type === "market_created"
+                  ? "Created"
+                  : "Message"}
             </span>
             {payload && (
               <Link href={`/market/${payload.market}`} className="link link-hover font-semibold">
@@ -76,7 +80,12 @@ function MessageCard({ message }: { message: FeedMessage }) {
             Message #{message.sequenceNumber} on HashScan
           </a>
           {typeof payload?.tx === "string" && (
-            <a href={`${hashScanUrl}/transaction/${payload.tx}`} target="_blank" rel="noreferrer" className="link link-hover">
+            <a
+              href={`${hashScanUrl}/transaction/${payload.tx}`}
+              target="_blank"
+              rel="noreferrer"
+              className="link link-hover"
+            >
               Source transaction
             </a>
           )}
@@ -188,7 +197,9 @@ const RecordPage: NextPage = () => {
         {!error && feed !== null && feed.length === 0 && (
           <div className="card bg-base-100 shadow-md">
             <div className="card-body items-center text-center">
-              <p className="opacity-70">No messages on the topic yet. Create a market, then use Sync to write its terms.</p>
+              <p className="opacity-70">
+                No messages on the topic yet. Create a market, then use Sync to write its terms.
+              </p>
             </div>
           </div>
         )}
