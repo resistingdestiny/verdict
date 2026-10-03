@@ -126,13 +126,12 @@ The testnet run has its own root scripts: `yarn hardhat:e2e-testnet` creates a 1
 
 ## How to add a market kind
 
-Five touches, all mechanical. The full walkthrough is `docs/TUTORIAL.md`.
+Mechanical, but the kind is enumerated in more places than the payoff rule. The full walkthrough with snippets is `docs/TUTORIAL.md`.
 
-1. Add the enum value in `packages/hardhat/contracts/interfaces/IVerdict.sol`.
-2. Add the payoff branch in the pure payoff function in `packages/hardhat/contracts/Verdict.sol`.
-3. Add a test table in `packages/hardhat/test/Verdict.test.ts` covering each bound, a value just either side of it, and a midpoint.
-4. Add the label in `packages/nextjs/lib/payoff.ts`.
-5. Add the payoff diagram in `packages/nextjs/components/PayoffDiagram.tsx`.
+- Contract: append the enum value in `packages/hardhat/contracts/interfaces/IVerdict.sol` (append only, enum order is storage layout), add the payoff branch in `_payout` in `packages/hardhat/contracts/Verdict.sol`, and add the kind to the two-bound condition in `createMarket` or its `upper` is stored as zero.
+- Tests: the payoff table in `packages/hardhat/test/Verdict.test.ts`, the `Kind` mirror in `test/helpers/verdict.ts`, and the random kind draw in `test/Invariants.property.test.ts`.
+- Frontend: the kind lists in `packages/nextjs/lib/payoff.ts` and `lib/question.ts`, the upper-bound marker in `components/PayoffDiagram.tsx`, the `usesUpper` conditions and `KIND_NAMES` in `app/api/_lib/markets.ts` and `app/api/_lib/messages.ts`, and the kind list in `app/llms.txt/route.ts`.
+- Scripts: the kind maps in `packages/hardhat/scripts/lib/testnetMarket.ts`, `create-market.ts` and `record-sync.ts`.
 
 ## Trading Verdict from an agent
 

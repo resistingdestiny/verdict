@@ -1,14 +1,53 @@
-# Tutorial: add the Outside kind in 15 minutes
+# Tutorial: add the Outside kind
 
-Verdict is built so that a new market kind is five small touches: one enum value, one payoff branch, one test table, one label and one payoff diagram. This tutorial adds **Outside**, which pays 1 HBAR when the price at expiry is outside a range: below the lower bound or at or above the upper bound. It is the same task the Hedera Harness recipe in `.harness/` uses to test the repo with a fresh agent.
+This tutorial adds a fifth market kind, **Outside**, which pays 1 HBAR when the price at expiry is outside a range: below the lower bound or at or above the upper bound. It is the same task the Hedera Harness recipe in `.harness/` gives a fresh agent, and the same task used to test `AGENTS.md`.
 
-You will touch:
+The mechanism is shared, so `createMarket`, split, merge, the router trades, scheduled resolution and redemption need no new logic. What a new kind does need is a line in every place the kind list is duplicated. There are more of those than the contract alone suggests: the kind list lives in the Solidity enum, a TypeScript mirror in the test helpers, the frontend lib, the question text, the JSON API, the HCS message builders, the operational scripts and the docs. This command finds every one of them:
 
-- `packages/hardhat/contracts/interfaces/IVerdict.sol`
-- `packages/hardhat/contracts/Verdict.sol`
-- `packages/hardhat/test/Verdict.test.ts`
-- `packages/nextjs/lib/payoff.ts`
-- `packages/nextjs/components/PayoffDiagram.tsx`
+```bash
+rg -n "Kind.Scalar|kind === 3|Scalar" packages
+```
+
+Work through the checklist in order. Each step names its file. The groups are contract, tests, frontend, API and record, scripts, docs.
+
+## The checklist
+
+Contract
+
+1. `packages/hardhat/contracts/interfaces/IVerdict.sol`: append `Outside` to `Kind`; update the `lower` and `upper` struct comments and the `@param upper` NatSpec on `createMarket`.
+2. `packages/hardhat/contracts/Verdict.sol`: add Outside to the bounds check in `createMarket`, then add the payoff branch in `_payout` before the Scalar lines.
+
+Tests
+
+3. `packages/hardhat/test/helpers/verdict.ts`: add `Outside = 4` to the `Kind` enum mirror. The test suite does not compile without it.
+4. `packages/hardhat/test/Verdict.test.ts`: add Outside to the bounds test, add a payoff table, and add a complement test against Between.
+5. `packages/hardhat/test/Invariants.property.test.ts`: widen the random kind range (`fc.nat({ max: 3 })`, about line 44) to include Outside.
+
+Frontend
+
+6. `packages/nextjs/lib/payoff.ts`: the `Kind` const, `KINDS`, `KIND_LABELS`, `KIND_DESCRIPTIONS`, `kindUsesUpper`, the `payoutFor` switch and the `conditionText` switch.
+7. `packages/nextjs/lib/question.ts`: `KIND_NAMES` and the `questionText` switch. Without this an Outside market gets the Scalar wording.
+8. `packages/nextjs/components/PayoffDiagram.tsx`: the upper-bound marker condition.
+9. `packages/nextjs/lib/__tests__/payoff.test.ts`: rows for the new kind in every `describe` block that enumerates kinds.
+
+API and record
+
+10. `packages/nextjs/app/api/_lib/markets.ts`: the `usesUpper` test that decides whether `/api/markets` returns `upper`.
+11. `packages/nextjs/app/api/_lib/messages.ts`: `KIND_NAMES` and the `usesUpper` test for the `market_created` HCS message.
+12. `packages/nextjs/app/llms.txt/route.ts`: one line describing the kind for agents.
+
+Scripts
+
+13. `packages/hardhat/scripts/lib/testnetMarket.ts`: `KIND` and `KIND_NAMES`.
+14. `packages/hardhat/scripts/create-market.ts`: the `KINDS` map and the `needsUpper` test.
+15. `packages/hardhat/scripts/record-sync.ts`: `KIND_NAMES` and the `usesUpper` test.
+
+Docs
+
+16. `README.md`, under the heading "The four market kinds": rename the heading, add a paragraph for the kind and a payoff diagram at `docs/img/payoff-outside.svg`.
+17. Redeploy, or note that the committed reference deployment does not know the new kind (see "The reference deployment" below).
+
+Each step is explained in turn.
 
 ## 1. The enum value
 
@@ -24,48 +63,102 @@ enum Kind {
 }
 ```
 
-Enum order is storage layout, so append only. Never insert or reorder.
+Enum order is storage layout, so append only. Never insert or reorder. The interface is frozen except for this: appending `Kind` values is how a kind is added. While you are in the file, extend the `lower` and `upper` comments in the `Market` struct and the `@param upper` line on `createMarket`, which both list the kinds that use an upper bound.
 
-## 2. The payoff branch
+## 2. The bounds check and the payoff branch
 
-The payoff rule is a pure private function `_payout` in `packages/hardhat/contracts/Verdict.sol`, one early return per kind, and `payoutFor` exposes it as a view. Add one line:
+Both edits are in `packages/hardhat/contracts/Verdict.sol`.
+
+First the bounds check. `createMarket` validates `upper > lower` only for the kinds that use an upper bound and stores `upper = 0` for the rest:
 
 ```solidity
-if (kind == Kind.Outside) return answer < lower || answer >= upper ? ONE_HBAR : 0;
+if (kind == Kind.Between || kind == Kind.Scalar) {
+    if (upper <= lower) revert InvalidBounds();
+} else {
+    upper = 0;
+}
 ```
 
-`ONE_HBAR` is 100,000,000 tinybars per whole token. Bounds arrive in the feed's own decimals, so the branch compares `answer` against `lower` and `upper` directly, with no scaling.
+Add `|| kind == Kind.Outside` to the condition. Without it the contract accepts an Outside market with any bounds, stores `upper = 0`, and the payoff branch then compares against zero.
 
-Note the asymmetry with Between: Between pays inside `[lower, upper)`, Outside pays outside it, so `answer == upper` pays Outside in full and `answer == lower` pays it nothing. Match these edges in the test table below, or the two kinds stop being complements.
+Then the payoff. The rule is a pure private function `_payout`, and `payoutFor` exposes it as a view. Above, Below and Between each have an early return; Scalar is the fall-through at the end, three lines that assume the kind is Scalar. Insert the new branch after the Between line and before those Scalar lines:
 
-## 3. The test table
+```solidity
+if (kind == Kind.Above) return answer > lower ? ONE_HBAR : 0;
+if (kind == Kind.Below) return answer < lower ? ONE_HBAR : 0;
+if (kind == Kind.Between) return (answer >= lower && answer < upper) ? ONE_HBAR : 0;
+if (kind == Kind.Outside) return (answer < lower || answer >= upper) ? ONE_HBAR : 0; // new
+if (answer <= lower) return 0; // Scalar from here on
+if (answer >= upper) return ONE_HBAR;
+return uint64((uint256(answer - lower) * ONE_HBAR) / uint256(upper - lower));
+```
 
-Each kind has one payoff table test in `packages/hardhat/test/Verdict.test.ts`, driven through the pure `payoutFor` view. Add a table for Outside with a value on each bound, just either side of each bound, and a midpoint:
+A branch placed after the Scalar lines is unreachable. `ONE_HBAR` is 100,000,000 tinybars per whole token. Bounds arrive in the feed's own decimals, so the branch compares `answer` against `lower` and `upper` directly, with no scaling.
+
+Note the asymmetry with Between: Between pays inside `[lower, upper)`, Outside pays outside it, so `answer == upper` pays Outside in full and `answer == lower` pays it nothing. Match these edges in the test table, or the two kinds stop being complements.
+
+## 3. The test helper
+
+`packages/hardhat/test/helpers/verdict.ts` mirrors the Solidity enum for the tests:
+
+```typescript
+export enum Kind {
+  Above = 0,
+  Below = 1,
+  Between = 2,
+  Scalar = 3,
+  Outside = 4,
+}
+```
+
+Add the line. Every test file imports this enum, so `Kind.Outside` does not exist, and the suite does not compile, until it is there.
+
+## 4. The contract tests
+
+Three additions in `packages/hardhat/test/Verdict.test.ts`.
+
+The bounds test, "validates bounds per kind", loops over `[Kind.Between, Kind.Scalar]` and expects `InvalidBounds` for `upper == lower` and `upper < lower`. Add `Kind.Outside` to the loop, and add a creation with valid bounds that reads the market back and checks `upper` was stored:
+
+| kind | lower | upper | expected |
+| --- | --- | --- | --- |
+| Outside | 100 | 100 | reverts `InvalidBounds` |
+| Outside | 100 | 99 | reverts `InvalidBounds` |
+| Outside | 100 | 101 | created, `getMarket(id).upper == 101` |
+
+The payoff tables in `describe("payoff tables")` are a `tables` array of `{ kind, lower, upper, rows }`, each row an `[answer, expectedYesPayout]` pair driven through the pure `payoutFor` view. Add a table for Outside with a value on each bound, just either side of each bound, and a midpoint:
 
 | lower | upper | answer | expected YES payout |
 | --- | --- | --- | --- |
-| 10 | 20 | 5 | 1 HBAR |
-| 10 | 20 | 9 | 1 HBAR |
-| 10 | 20 | 10 | 0 |
-| 10 | 20 | 15 | 0 |
-| 10 | 20 | 19 | 0 |
-| 10 | 20 | 20 | 1 HBAR |
-| 10 | 20 | 25 | 1 HBAR |
+| 1000 | 2000 | 500 | 1 HBAR |
+| 1000 | 2000 | 999 | 1 HBAR |
+| 1000 | 2000 | 1000 | 0 |
+| 1000 | 2000 | 1500 | 0 |
+| 1000 | 2000 | 1999 | 0 |
+| 1000 | 2000 | 2000 | 1 HBAR |
+| 1000 | 2000 | 2500 | 1 HBAR |
 
-Then run the suite:
+Then a complement test: for every answer in the table, `payoutFor(Between, ...) + payoutFor(Outside, ...)` equals 1 HBAR. Where the lifecycle tests enumerate kinds, add Outside so it gets a full create, split, settle and redeem run as well.
 
 ```bash
 yarn hardhat:test test/Verdict.test.ts
 ```
 
-The lifecycle tests enumerate kinds; where they do, add Outside so it gets a full create, split, settle and redeem run as well.
+## 5. The property suite
 
-## 4. The label
+`packages/hardhat/test/Invariants.property.test.ts` creates random markets with `kind: fc.nat({ max: 3 })` (about line 44). Change the bound to `Kind.Outside` so the invariants are exercised on the new kind. This file is pending under `yarn hardhat:test` because it is gated behind `VERDICT_PROPERTY=1`; run it with:
 
-`packages/nextjs/lib/payoff.ts` mirrors the contract's payoff so the app can label markets and draw diagrams without a contract call. Add Outside in each place the kinds are enumerated:
+```bash
+VERDICT_PROPERTY_RUNS=50 yarn hardhat:test:property
+```
 
-- the `Kind` const (`Outside: 4`), the `KINDS` list, `KIND_LABELS` and `KIND_DESCRIPTIONS`
-- `kindUsesUpper`: Outside has two bounds, like Between and Scalar
+CI runs 200 sequences and the default is 1000; lower it locally while iterating.
+
+## 6. The frontend lib
+
+`packages/nextjs/lib/payoff.ts` mirrors the contract's payoff so the app can label markets, validate bounds and draw diagrams without a contract call. Add Outside in each place the kinds are enumerated:
+
+- the `Kind` const (`Outside: 4`), the `KINDS` list (the Create page offers exactly this list), `KIND_LABELS` and `KIND_DESCRIPTIONS`
+- `kindUsesUpper`: Outside has two bounds, like Between and Scalar. `boundsValid` follows from it.
 - the `payoutFor` switch, with the same rule as the contract branch:
 
 ```typescript
@@ -73,22 +166,92 @@ case Kind.Outside:
   return answer < lower || answer >= upper ? PAYOUT_SCALE : 0n;
 ```
 
-- the `conditionText` switch, for example `be outside ${lo} and ${hi}`, which makes `questionText` read "Will HBAR / USD be outside 0.10 and 0.12 at 9 Oct 2026, 16:00 UTC?"
+- the `conditionText` switch, for example `be outside ${lo} and ${hi}`
 
-The lib's unit tests live in `packages/nextjs/lib/__tests__/`; add the Outside rows there and run `yarn next:test`.
+Bounds are printed in human units with trailing zeros trimmed, so 10,000,000 at 8 decimals prints `0.1`, not `0.10`.
 
-## 5. The payoff diagram
+## 7. The question text
 
-`packages/nextjs/components/PayoffDiagram.tsx` samples `payoffPoints` from `lib/payoff.ts` across the price range, so the new `payoutFor` branch already draws the right shape: YES pays 1 HBAR below the lower bound and from the upper bound up, nothing between them. The one edit left in the component is the bound-marker condition, which currently marks the upper bound only for Between and Scalar; extend it so Outside's upper bound is marked too. `docs/img/payoff-between.svg` shows the same shape inverted.
+`packages/nextjs/lib/question.ts` is a second copy of the kind names, used by the JSON API and the HCS record, which are built on the server from chain data and do not import the frontend lib's React-facing helpers. Add `Outside` to its `KIND_NAMES` and a case to `questionText`:
 
-## 6. Check and finish
-
-```bash
-yarn hardhat:compile
-yarn hardhat:test
-yarn hardhat:lint --max-warnings=0
-yarn next:lint --max-warnings=0
-yarn next:check-types
+```typescript
+case "Outside":
+  return `Will ${feed} be outside ${lower} and ${upper} at ${when}?`;
 ```
 
-That is a complete kind. Nothing else changes because the mechanism is shared: `createMarket`, split, merge, the router trades, scheduled resolution and redemption all work off the enum and the one payout number.
+The switch's `default` is the Scalar wording ("Where will ... land between"), so an Outside market without this case reads as a Scalar question in `/api/markets` and on HCS. The result for the example market is "Will HBAR / USD be outside 0.1 and 0.12 at 9 Oct 2026, 16:00 UTC?".
+
+## 8. The payoff diagram
+
+`packages/nextjs/components/PayoffDiagram.tsx` samples `payoffPoints` from `lib/payoff.ts` across the price range, so the new `payoutFor` branch already draws the right shape: YES pays 1 HBAR below the lower bound and from the upper bound up, nothing between them. The one edit is the upper-bound marker. It is a hard-coded kind test:
+
+```typescript
+if (kind === 2 || kind === 3) markers.push({ price: upper, label: feedAnswerToPrice(upper, decimals, 4) });
+```
+
+Replace the condition with `kindUsesUpper(kind)` from `lib/payoff.ts`. That is the pattern to follow everywhere a file asks "does this kind use `upper`": one helper, no literal kind numbers, so the next kind is one edit instead of six.
+
+## 9. The frontend tests
+
+`packages/nextjs/lib/__tests__/payoff.test.ts` has a payoff table per kind, a loop over all kinds checking YES plus NO is 1 HBAR, and `describe` blocks for `kindUsesUpper`, `boundsValid`, `questionText`, `conditionText` and the diagram helpers. Add Outside to each, including an Outside row in the all-kinds loop, then:
+
+```bash
+yarn next:test
+```
+
+## 10 to 12. The API, the record and llms.txt
+
+Three server-side files carry their own copy of the kind list or of the "uses upper" test:
+
+- `packages/nextjs/app/api/_lib/markets.ts`: `const usesUpper = raw.kind === 2 || raw.kind === 3;` decides whether `/api/markets` returns `upper` or `null`. Replace it with `isKind(raw.kind) && kindUsesUpper(raw.kind)` from `~~/lib/payoff`.
+- `packages/nextjs/app/api/_lib/messages.ts`: `KIND_NAMES` names the kind in the `market_created` HCS message, and the same `usesUpper` test decides whether the message carries `upper`. Add the name and use `kindUsesUpper` here too.
+- `packages/nextjs/app/llms.txt/route.ts`: the kinds are listed one per line for agents. Add a line for Outside in the same voice as the others.
+
+## 13 to 15. The scripts
+
+The hardhat package cannot import the frontend lib, so the operational scripts keep their own kind lists:
+
+- `packages/hardhat/scripts/lib/testnetMarket.ts`: `KIND` and `KIND_NAMES`. Add a `kindUsesUpper(kind)` helper next to them so the other scripts can share it.
+- `packages/hardhat/scripts/create-market.ts`: has its own `KINDS` map and `const needsUpper = kind === 2 || kind === 3;`. Import `KIND` and `kindUsesUpper` from `./lib/testnetMarket` instead, which removes one copy of the list.
+- `packages/hardhat/scripts/record-sync.ts`: `KIND_NAMES` and another `usesUpper` test. This script re-implements the message builders because it runs without viem; keep it in step with `messages.ts`.
+
+After this, `yarn workspace @sh/hardhat hardhat run scripts/create-market.ts --network hederaTestnet -- --kind Outside --lower 0.10 --upper 0.12 ...` accepts the new kind.
+
+## 16. The docs
+
+- `README.md` has a section headed "The four market kinds". Rename it, add a paragraph for Outside in the same shape as the others, and add `docs/img/payoff-outside.svg`. Each kind has a payoff SVG there; copy `payoff-between.svg`, swap the YES and NO paths (Outside is Between inverted) and update the `aria-label`.
+- Search the docs for the old count: `rg -n "four kinds|four market kinds|Scalar" README.md AGENTS.md docs`.
+
+## 17. The reference deployment
+
+`packages/nextjs/contracts/deployedContracts.ts` is the committed reference deployment on Hedera testnet, and that contract does not know the new kind. The Create page builds its kind menu from `KINDS` in `lib/payoff.ts`, so after this change it offers Outside against a contract whose enum ends at Scalar, and `createMarket` rejects the call with an ABI decoding error. Redeploy and commit the regenerated `deployedContracts.ts`:
+
+```bash
+yarn hardhat:deploy --network hederaTestnet
+```
+
+Until you do, the kind works on the local chain (`yarn hardhat:chain`, `yarn hardhat:deploy --network localhost`) and in the tests, and the committed deployment keeps serving the four original kinds.
+
+## Format, commit, and the finish line
+
+Format only the files you changed. `yarn format` runs Prettier over both packages and reformats unrelated files if any have drifted:
+
+```bash
+yarn workspace @sh/nextjs prettier --write lib/payoff.ts lib/question.ts components/PayoffDiagram.tsx
+yarn workspace @sh/hardhat prettier --write contracts/Verdict.sol contracts/interfaces/IVerdict.sol test/Verdict.test.ts
+```
+
+The husky pre-commit hook runs lint-staged, which runs `next lint --fix` and the frontend `tsc` over staged files and `eslint --fix` over staged hardhat files. On a slow machine that takes minutes. After running the checks below by hand, `git commit --no-verify` is acceptable.
+
+The finish line is the CI workflow, `.github/workflows/ci.yml`. Its jobs and their exact commands:
+
+| CI job | Commands | Notes |
+| --- | --- | --- |
+| Lint, types, tests, build | `yarn hardhat:compile`, `yarn next:lint --max-warnings=0`, `yarn hardhat:lint --max-warnings=0`, `yarn next:check-types`, `yarn hardhat:check-types`, `yarn hardhat:test`, `yarn next:test`, `yarn next:build`, `node scripts/check-readme-scripts.mjs`, `node scripts/check-template-json.mjs` | `yarn lint` runs both lints. `hardhat:lint` and `hardhat:check-types` print nothing on success. The property file shows as pending under `yarn hardhat:test` because it is gated. |
+| Property tests | `yarn hardhat:test:property` | CI sets `VERDICT_PROPERTY_RUNS=200`; the default is 1000. Set it lower locally while iterating. |
+| Coverage | `yarn hardhat:coverage` | Line and branch coverage on the three contracts; the summary is printed, nothing is uploaded. |
+| Slither | `slither packages/hardhat --config-file slither.config.json` | CI runs `crytic/slither-action` with `slither.config.json` at the repo root, filtering `node_modules`, `mocks` and `spikes`, and fails on medium. Run the command locally if Slither is installed. |
+| Playwright routes | `yarn next:test:e2e` | Needs a production build first (`yarn next:build`) and Chromium (`npx playwright install --with-deps chromium` inside `packages/nextjs`). |
+| Secrets scan | gitleaks over the full history | `gitleaks detect` at the repo root if you have it installed. Never commit a `.env`. |
+
+Run the first two rows at minimum before opening a pull request, plus `yarn hardhat:coverage` when a contract changed. The deterministic check for this particular task is `node .harness/validators/check-outside-kind.mjs`.
