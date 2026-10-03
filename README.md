@@ -13,7 +13,7 @@ npm create scaffold-hbar@latest -- --template resistingdestiny/verdict
 You need Node 20.18.3 or later. Scaffold, install and start:
 
 ```bash
-npm create scaffold-hbar@latest -- --template resistingdestiny/verdict
+npm create scaffold-hbar@latest verdict -- --template resistingdestiny/verdict
 cd verdict
 yarn install
 yarn next:dev
@@ -65,7 +65,7 @@ Deploy:
 ```bash
 yarn hardhat:account:generate
 yarn hardhat:test
-yarn hardhat:deploy --network hederaTestnet
+yarn hardhat:deploy:testnet
 ```
 
 `yarn hardhat:account:generate` writes the encrypted key to `packages/hardhat/.env`; use `yarn hardhat:account:import` to bring an existing key. The deploy script deploys `Verdict`, `ChainlinkResolver` and `VerdictRouter` and writes the addresses to `packages/nextjs/contracts/deployedContracts.ts`. When the operator credentials are set it also creates the HCS record topic and writes the topic id into `packages/nextjs/verdict.config.ts`; without them it skips that step, and you can create the topic later with `yarn record:create-topic`. Verify the contracts so HashScan shows their source:
@@ -78,17 +78,14 @@ yarn hardhat:verify -- VerdictRouter testnet
 
 `yarn hardhat:verify-all` verifies all three idempotently from the deployments folder.
 
-Create and seed a first market. The Create page at http://localhost:3000/create walks through it: it shows the live feed price, you pick a kind, bounds and an expiry, it estimates the cost, then it runs create, split, approve and seed in order. From the command line the same steps are three scripts, run from the repo root:
+Create and seed a first market. The Create page at http://localhost:3000/create walks through it: it shows the live feed price, you pick a kind, bounds and an expiry, it estimates the cost, then it runs create, split, approve and seed in order. From the command line the same steps are three scripts, run from the repo root with their inputs as environment variables (the same form works under Yarn and npm):
 
 ```bash
-yarn workspace @sh/hardhat hardhat run scripts/create-market.ts --network hederaTestnet -- \
-  --feed HBAR/USD --kind Above --lower 0.10 --expiry 2026-10-09T16:00:00Z
+FEED=HBAR/USD KIND=Above LOWER=0.10 EXPIRY=2026-10-09T16:00:00Z yarn hardhat:create-market
 
-yarn workspace @sh/hardhat hardhat run scripts/seed-pool.ts --network hederaTestnet -- \
-  --id 0 --split 20 --liquidity 10
+ID=0 SPLIT=20 LIQUIDITY=10 yarn hardhat:seed-pool
 
-yarn workspace @sh/hardhat hardhat run scripts/trade.ts --network hederaTestnet -- \
-  --id 0 --trade buyYes --amount 1
+ID=0 TRADE=buyYes AMOUNT=1 yarn hardhat:trade
 ```
 
 `create-market` prints the market id, the YES and NO tokens and the resolution schedule, with HashScan links; use that id for `--id`. Bounds are human units, converted with the feed's decimals. `seed-pool` splits `--split` HBAR, seeds the pool with that many whole YES against `--liquidity` HBAR and pays the pool creation fee. `trade` runs any of the four trades with a 2 percent slippage bound. Two things to know before seeding: `createMarket` charges the two HTS token creation fees plus a resolution reserve and refunds the rest, and seeding the pool leaves the creator holding the NO leg, which is itself a position.

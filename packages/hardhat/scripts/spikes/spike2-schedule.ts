@@ -34,7 +34,7 @@ async function main() {
 
   const second = now + 150n;
   const balanceBefore = await ethers.provider.getBalance(address);
-  const tx = await spike.schedule(second, GAS_LIMIT, { gasLimit: 1_000_000 });
+  const tx = await spike.schedule(second, GAS_LIMIT, { gasLimit: 4_000_000 });
   const receipt = await tx.wait();
   const scheduled = receipt?.logs
     .map(log => {

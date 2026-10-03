@@ -79,7 +79,7 @@ yarn hardhat:account:import
 yarn hardhat:account
 
 # Live networks (never mainnet for this template)
-yarn hardhat:deploy --network hederaTestnet
+yarn hardhat:deploy:testnet              # deploy to Hedera testnet
 yarn hardhat:verify -- Verdict testnet [0xAddress]
 yarn hardhat:verify-all               # idempotent Sourcify verification of all three contracts
 yarn record:create-topic              # create the HCS record topic (needs operator env), writes verdict.config.ts
@@ -95,11 +95,12 @@ node scripts/check-template-json.mjs
 
 `yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the long-running node.
 
-Operational scripts under `packages/hardhat/scripts/`: `create-market`, `seed-pool`, `trade`, `e2e-testnet`, `reference-deployment`, `verify-all`, `record-sync`, `agent-trade`, and throwaway `spikes/`. Run the Hardhat ones from the repo root through the workspace, for example:
+Operational scripts under `packages/hardhat/scripts/`: `create-market`, `seed-pool`, `trade`, `e2e-testnet`, `reference-deployment`, `verify-all`, `record-sync`, `agent-trade`, and throwaway `spikes/`. Each has a root script, and the hand-run ones take their inputs as upper-case environment variables so the same line works under Yarn and npm:
 
 ```bash
-yarn workspace @sh/hardhat hardhat run scripts/create-market.ts --network hederaTestnet -- \
-  --feed HBAR/USD --kind Above --lower 0.10 --expiry 2026-10-09T16:00:00Z
+FEED=HBAR/USD KIND=Above LOWER=0.10 EXPIRY=2026-10-09T16:00:00Z yarn hardhat:create-market
+ID=0 SPLIT=20 LIQUIDITY=10 yarn hardhat:seed-pool
+ID=0 TRADE=buyYes AMOUNT=1 yarn hardhat:trade
 ```
 
 The testnet run has its own root scripts: `yarn hardhat:e2e-testnet` creates a 10-minute market, splits, seeds the pool, makes all four trades, waits for the scheduled resolution (with a manual `resolve` fallback), proves collateral untouched across the run, redeems, writes the HCS record and appends every transaction id to `docs/EVIDENCE.md` and the measured costs to `docs/COSTS.md`. It is resumable from `packages/hardhat/.testnet-run.json` (git-ignored), run by hand and never in CI. `yarn hardhat:reference-deployment` creates the six judged reference markets with a 150 HBAR deployer floor, and `yarn hardhat:verify-all` verifies the deployed contracts on Sourcify idempotently.
@@ -169,7 +170,7 @@ Scripts
 Docs and deployment
 
 16. `README.md`, heading "The four market kinds": rename, add the paragraph and a payoff SVG under `docs/img/` (one per kind).
-17. The committed reference deployment in `packages/nextjs/contracts/deployedContracts.ts` does not know a new kind. Redeploy with `yarn hardhat:deploy --network hederaTestnet` and commit the regenerated file, or the Create page offers a kind the live contract rejects.
+17. The committed reference deployment in `packages/nextjs/contracts/deployedContracts.ts` does not know a new kind. Redeploy with `yarn hardhat:deploy:testnet` and commit the regenerated file, or the Create page offers a kind the live contract rejects.
 
 ## Trading Verdict from an agent
 

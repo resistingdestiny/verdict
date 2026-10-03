@@ -134,8 +134,13 @@ export const hederaTestnet = {
  * Deployment defaults that are not addresses but belong beside them.
  */
 export const deploymentDefaults = {
-  /** Tinybars sent with each HTS token creation: 1 HBAR. Verdict measures and charges what HTS consumed. */
-  tokenCreateValue: 100_000_000n,
+  /**
+   * Tinybars sent with each HTS token creation: 20 HBAR. Spike 1 on 2026-10-03 measured the creation fee at
+   * about 11.7 HBAR (1 and 5 HBAR came back with code 9, INSUFFICIENT_TX_FEE); the fee is USD-pegged, so the
+   * value leaves headroom. Verdict measures what HTS consumed, charges the creator that, and keeps the rest
+   * as sweepable surplus; the owner can move it with `setTokenCreateValue`.
+   */
+  tokenCreateValue: 2_000_000_000n,
 } as const;
 
 /** The resolver's feed id for an aggregator: the address left-padded to 32 bytes. */

@@ -54,7 +54,7 @@ async function main() {
   const feeTinybars: bigint = await rate.tinycentsToTinybars(feeTinycents);
   console.log(`pairCreateFee ${feeTinycents} tinycents = ${feeTinybars} tinybars = ${Number(feeTinybars) / 1e8} HBAR`);
 
-  const tokenAmount = 500_000_000n; // 5 tokens with 8 decimals
+  const tokenAmount = 50_000_000n; // 0.5 token with 8 decimals; spike 1 handed the deployer 1 token
   const hbarLiquidity = 5n * ONE_HBAR;
   await (await erc20.approve(ROUTER, tokenAmount, { gasLimit: 800_000 })).wait();
   console.log("approved router on token");

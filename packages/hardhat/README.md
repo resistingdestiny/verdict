@@ -44,7 +44,7 @@ You need a deployer account with testnet HBAR. Without funds, deploy and verify 
 
 ```bash
 yarn hardhat:account:generate   # or yarn hardhat:account:import
-yarn hardhat:deploy --network hederaTestnet
+yarn hardhat:deploy:testnet
 ```
 
 The encrypted key lives in `packages/hardhat/.env`, which is git-ignored. Fund the account at [portal.hedera.com](https://portal.hedera.com/faucet).

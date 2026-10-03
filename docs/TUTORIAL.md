@@ -215,7 +215,7 @@ The hardhat package cannot import the frontend lib, so the operational scripts k
 - `packages/hardhat/scripts/create-market.ts`: has its own `KINDS` map and `const needsUpper = kind === 2 || kind === 3;`. Import `KIND` and `kindUsesUpper` from `./lib/testnetMarket` instead, which removes one copy of the list.
 - `packages/hardhat/scripts/record-sync.ts`: `KIND_NAMES` and another `usesUpper` test. This script re-implements the message builders because it runs without viem; keep it in step with `messages.ts`.
 
-After this, `yarn workspace @sh/hardhat hardhat run scripts/create-market.ts --network hederaTestnet -- --kind Outside --lower 0.10 --upper 0.12 ...` accepts the new kind.
+After this, `FEED=HBAR/USD KIND=Outside LOWER=0.10 UPPER=0.12 EXPIRY=... yarn hardhat:create-market` accepts the new kind.
 
 ## 16. The docs
 
@@ -227,7 +227,7 @@ After this, `yarn workspace @sh/hardhat hardhat run scripts/create-market.ts --n
 `packages/nextjs/contracts/deployedContracts.ts` is the committed reference deployment on Hedera testnet, and that contract does not know the new kind. The Create page builds its kind menu from `KINDS` in `lib/payoff.ts`, so after this change it offers Outside against a contract whose enum ends at Scalar, and the contract reverts the call, because the ABI decoder rejects an enum value out of range. Redeploy and commit the regenerated `deployedContracts.ts`:
 
 ```bash
-yarn hardhat:deploy --network hederaTestnet
+yarn hardhat:deploy:testnet
 ```
 
 Until you do, the kind works on the local chain (`yarn hardhat:chain`, `yarn hardhat:deploy --network localhost`) and in the tests, and the committed deployment keeps serving the four original kinds.
