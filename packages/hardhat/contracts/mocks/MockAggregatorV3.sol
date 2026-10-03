@@ -54,7 +54,10 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         returns (uint80 roundId_, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
         uint80 aggregatorRound = uint80(uint64(roundId));
-        require(roundId >> 64 == 1 && aggregatorRound > 0 && aggregatorRound <= latestAggregatorRound, "No data present");
+        require(
+            roundId >> 64 == 1 && aggregatorRound > 0 && aggregatorRound <= latestAggregatorRound,
+            "No data present"
+        );
         Round memory r = _rounds[aggregatorRound];
         return (roundId, r.answer, r.startedAt, r.updatedAt, roundId);
     }

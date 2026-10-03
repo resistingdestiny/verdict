@@ -1,7 +1,7 @@
 schemaVersion: 2
 
 name: verdict-outside-kind
-description: Add the Outside market kind to Verdict: one enum value, one payoff branch, one test table, one label and one payoff diagram. This recipe automates the AGENTS.md fresh-agent test.
+description: Add the Outside market kind to Verdict. The mechanism is shared, so the work is the enum value, the bounds-check term and the payoff branch in the contract, plus a line in each place the kind list is duplicated (test helper, frontend lib, question text, API and HCS builders, scripts, README). This recipe automates the AGENTS.md fresh-agent test.
 
 agent: claude
 

@@ -15,7 +15,7 @@ packages/
       Verdict.sol               markets, outcome tokens, collateral, settlement, redemption
       VerdictRouter.sol         four trades in one transaction each; stateless, holds nothing
       VerdictSeries.sol         stretch: a self-running market series
-      interfaces/               IVerdict.sol, IResolver.sol, IVerdictRouter.sol (frozen)
+      interfaces/               IVerdict.sol, IResolver.sol, IVerdictRouter.sol (frozen, except for appending Kind values)
       resolvers/                ChainlinkResolver.sol, GuardedResolver.sol (stretch)
       mocks/                    HTS, HSS and Chainlink test doubles
       libraries/HederaCodes.sol HAPI response codes used at the system contract boundary
@@ -59,7 +59,7 @@ yarn next:start
 
 # Quality
 yarn lint                                # frontend and contracts
-yarn format
+yarn format                              # both packages; prefer formatting only the files you changed (see Checks)
 yarn next:lint --max-warnings=0
 yarn next:check-types
 yarn next:test                           # frontend unit tests (vitest)
@@ -69,6 +69,7 @@ yarn hardhat:check-types
 yarn hardhat:compile
 yarn hardhat:test                        # whole contract suite
 yarn hardhat:test test/Verdict.test.ts   # one file while iterating
+yarn hardhat:test:property               # the gated property suite (VERDICT_PROPERTY_RUNS lowers the sequence count)
 yarn hardhat:coverage                    # line and branch coverage on the three contracts
 yarn next:build
 
@@ -89,6 +90,7 @@ yarn hardhat:reference-deployment     # the six judged reference markets, checkp
 
 # README script check (CI runs this; every command the docs name must exist in a package.json)
 node scripts/check-readme-scripts.mjs
+node scripts/check-template-json.mjs
 ```
 
 `yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the long-running node.
@@ -126,13 +128,48 @@ The testnet run has its own root scripts: `yarn hardhat:e2e-testnet` creates a 1
 
 ## How to add a market kind
 
-Five touches, all mechanical. The full walkthrough is `docs/TUTORIAL.md`.
+The mechanism is shared, so no new logic is needed in `createMarket`, split, merge, the router, scheduling or redemption. What is needed is a line in every place the kind list is duplicated, and there are more of those than the contract: the Solidity enum, a TypeScript mirror in the test helpers, the frontend lib, the question text, the JSON API, the HCS message builders, the operational scripts and the docs. This finds them all:
 
-1. Add the enum value in `packages/hardhat/contracts/interfaces/IVerdict.sol`.
-2. Add the payoff branch in the pure payoff function in `packages/hardhat/contracts/Verdict.sol`.
-3. Add a test table in `packages/hardhat/test/Verdict.test.ts` covering each bound, a value just either side of it, and a midpoint.
-4. Add the label in `packages/nextjs/lib/payoff.ts`.
-5. Add the payoff diagram in `packages/nextjs/components/PayoffDiagram.tsx`.
+```bash
+rg -n "Kind.Scalar|kind === 3|Scalar" packages
+```
+
+The ordered checklist, with the full walkthrough in `docs/TUTORIAL.md` (it adds Outside):
+
+Contract
+
+1. `packages/hardhat/contracts/interfaces/IVerdict.sol`: append the enum value (append only, enum order is storage layout). The interface is frozen except for this. Update the `lower` and `upper` struct comments and the `@param upper` NatSpec on `createMarket`.
+2. `packages/hardhat/contracts/Verdict.sol`: add the kind to the bounds check in `createMarket` if it has an upper bound (`if (kind == Kind.Between || kind == Kind.Scalar)`, otherwise the contract stores `upper = 0`), then add the payoff branch in `_payout` before the Scalar lines. Scalar is the fall-through at the end of the function, not an early return, so a branch placed after it is unreachable.
+
+Tests
+
+3. `packages/hardhat/test/helpers/verdict.ts`: the `Kind` enum mirror. The suite does not compile without it.
+4. `packages/hardhat/test/Verdict.test.ts`: the bounds test (`InvalidBounds` for `upper <= lower`, and a valid creation that reads `upper` back), a payoff table through `payoutFor` covering each bound, a value just either side of it and a midpoint, and the lifecycle tests where they enumerate kinds.
+5. `packages/hardhat/test/Invariants.property.test.ts`: the random kind range, `fc.nat({ max: 3 })` about line 44. Pending under `yarn hardhat:test`; exercised by `yarn hardhat:test:property`.
+
+Frontend
+
+6. `packages/nextjs/lib/payoff.ts`: `Kind`, `KINDS`, `KIND_LABELS`, `KIND_DESCRIPTIONS`, `kindUsesUpper`, the `payoutFor` switch and the `conditionText` switch.
+7. `packages/nextjs/lib/question.ts`: `KIND_NAMES` and the `questionText` switch, or the kind gets the Scalar wording in the API and on HCS.
+8. `packages/nextjs/components/PayoffDiagram.tsx`: the upper-bound marker. Use `kindUsesUpper(kind)`, not a literal kind test.
+9. `packages/nextjs/lib/__tests__/payoff.test.ts`: rows in every block that enumerates kinds.
+
+API and record
+
+10. `packages/nextjs/app/api/_lib/markets.ts`: the `usesUpper` test (use `isKind` and `kindUsesUpper` from `~~/lib/payoff`).
+11. `packages/nextjs/app/api/_lib/messages.ts`: `KIND_NAMES` and `usesUpper`.
+12. `packages/nextjs/app/llms.txt/route.ts`: one line for the kind.
+
+Scripts
+
+13. `packages/hardhat/scripts/lib/testnetMarket.ts`: `KIND` and `KIND_NAMES`; add a `kindUsesUpper` helper there.
+14. `packages/hardhat/scripts/create-market.ts`: its `KINDS` map and `needsUpper` (import both from `./lib/testnetMarket`).
+15. `packages/hardhat/scripts/record-sync.ts`: `KIND_NAMES` and `usesUpper`.
+
+Docs and deployment
+
+16. `README.md`, heading "The four market kinds": rename, add the paragraph and a payoff SVG under `docs/img/` (one per kind).
+17. The committed reference deployment in `packages/nextjs/contracts/deployedContracts.ts` does not know a new kind. Redeploy with `yarn hardhat:deploy --network hederaTestnet` and commit the regenerated file, or the Create page offers a kind the live contract rejects.
 
 ## Trading Verdict from an agent
 
@@ -146,13 +183,23 @@ yarn workspace @sh/hardhat ts-node scripts/agent-trade.ts 1
 
 ## Checks before calling work finished
 
-All of these pass, from a clean tree:
+The finish line is `.github/workflows/ci.yml`. Every job, with its exact commands, all from a clean tree:
 
-- `yarn hardhat:compile`, `yarn hardhat:test`, `yarn hardhat:lint --max-warnings=0`, `yarn hardhat:check-types`
-- `yarn next:lint --max-warnings=0`, `yarn next:check-types`, `yarn next:test`, `yarn next:build`
-- `node scripts/check-readme-scripts.mjs`
-- The contract invariants hold in the test suite, including the property tests
-- Docs updated for any behaviour that changed; a troubleshooting row added for anything that broke and was understood
+| CI job | Commands | Notes |
+| --- | --- | --- |
+| Lint, types, tests, build | `yarn hardhat:compile`, `yarn next:lint --max-warnings=0`, `yarn hardhat:lint --max-warnings=0`, `yarn next:check-types`, `yarn hardhat:check-types`, `yarn hardhat:test`, `yarn next:test`, `yarn next:build`, `node scripts/check-readme-scripts.mjs`, `node scripts/check-template-json.mjs` | `yarn lint` runs both lints. `hardhat:lint` and `hardhat:check-types` print nothing on success. The property file shows as pending under `yarn hardhat:test` because it is gated. |
+| Property tests | `yarn hardhat:test:property` | CI sets `VERDICT_PROPERTY_RUNS=200`, the default is 1000; set it lower locally while iterating. |
+| Coverage | `yarn hardhat:coverage` | Summary printed, nothing uploaded. |
+| Slither | `slither packages/hardhat --config-file slither.config.json` | CI uses `crytic/slither-action` with the root `slither.config.json` (filters `node_modules`, `mocks`, `spikes`; fails on medium). Run it locally if Slither is installed. |
+| Playwright routes | `yarn next:test:e2e` | Needs `yarn next:build` first and Chromium (`npx playwright install --with-deps chromium` in `packages/nextjs`). |
+| Secrets scan | gitleaks over the full history | `gitleaks detect` at the repo root if installed. Never commit a `.env`. |
+
+Also:
+
+- The contract invariants hold in the test suite, including the property tests.
+- Docs updated for any behaviour that changed; a troubleshooting row added to the README table for anything that broke and was understood.
+- Format only the files you changed: `yarn workspace @sh/nextjs prettier --write <files>` and `yarn workspace @sh/hardhat prettier --write <files>`. `yarn format` runs Prettier over both packages and will reformat unrelated files if any have drifted.
+- The husky pre-commit hook runs lint-staged (`next lint --fix` and the frontend `tsc` over staged frontend files, `eslint --fix` over staged hardhat files). It can take minutes on a slow machine. After running the checks above by hand, `git commit --no-verify` is acceptable.
 
 ## Style
 

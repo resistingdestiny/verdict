@@ -20,19 +20,48 @@ This feature is the worked example in `docs/TUTORIAL.md`, and this recipe automa
 
 ## Feature to implement
 
-Five touches, walked through in `docs/TUTORIAL.md`:
+The mechanism is shared, so no new logic is needed in `createMarket`, split, merge, resolve, redeem or the router. What is needed is a line in every place the kind list is duplicated. The checklist, in order, with the walkthrough in `docs/TUTORIAL.md`:
 
-1. Append `Outside` to the `Kind` enum in `packages/hardhat/contracts/interfaces/IVerdict.sol`, after `Scalar`. Append only: enum order is storage layout.
-2. Add the payoff branch to the pure payoff function in `packages/hardhat/contracts/Verdict.sol`: `answer < lower || answer >= upper` pays in full (100,000,000 tinybars per whole token), otherwise zero.
-3. Add a payoff table test in `packages/hardhat/test/Verdict.test.ts`, driven through the `payoutFor` view, covering each bound, a value just either side of each bound, and a midpoint.
-4. Add Outside to `packages/nextjs/lib/payoff.ts` in each place the kinds are enumerated: the `Kind` const, `KINDS`, `KIND_LABELS`, `KIND_DESCRIPTIONS`, `kindUsesUpper`, the `payoutFor` switch (same rule as the contract) and `conditionText`, so a market reads for example "Will HBAR / USD be outside 0.10 and 0.12 at 9 Oct 2026, 16:00 UTC?". Add rows to the lib's unit tests under `packages/nextjs/lib/__tests__/`.
-5. Extend the bound-marker condition in `packages/nextjs/components/PayoffDiagram.tsx` so Outside's upper bound is marked; the diagram itself samples `payoffPoints`, so the new branch in `lib/payoff.ts` already gives the right shape.
+Contract
 
-Edge cases that decide correctness: `answer == upper` pays Outside in full and `answer == lower` pays it nothing, so Outside and Between stay complements. Where the lifecycle tests enumerate kinds, add Outside so it gets a full create, split, settle and redeem run.
+1. Append `Outside` to the `Kind` enum in `packages/hardhat/contracts/interfaces/IVerdict.sol`, after `Scalar`. Append only: enum order is storage layout. Update the `lower` and `upper` struct comments and the `@param upper` NatSpec on `createMarket`.
+2. In `packages/hardhat/contracts/Verdict.sol`, add `Kind.Outside` to the bounds check in `createMarket` (the `upper > lower` check that Between and Scalar share; without it the contract stores `upper = 0`), then add the payoff branch to `_payout` before the Scalar fall-through lines: `answer < lower || answer >= upper` pays in full (100,000,000 tinybars per whole token), otherwise zero.
+
+Tests
+
+3. Add `Outside = 4` to the `Kind` enum mirror in `packages/hardhat/test/helpers/verdict.ts`; the suite does not compile without it.
+4. In `packages/hardhat/test/Verdict.test.ts`: add Outside to the bounds test (`InvalidBounds` for `upper <= lower`, and a valid creation that reads `upper` back), add a payoff table driven through the `payoutFor` view covering each bound, a value just either side of each bound and a midpoint, and add a complement test against Between. Where the lifecycle tests enumerate kinds, add Outside.
+5. Widen the random kind range in `packages/hardhat/test/Invariants.property.test.ts` (`fc.nat({ max: 3 })`) to include Outside.
+
+Frontend
+
+6. Add Outside to `packages/nextjs/lib/payoff.ts` in each place the kinds are enumerated: the `Kind` const, `KINDS`, `KIND_LABELS`, `KIND_DESCRIPTIONS`, `kindUsesUpper`, the `payoutFor` switch (same rule as the contract) and `conditionText`.
+7. Add Outside to `KIND_NAMES` and the `questionText` switch in `packages/nextjs/lib/question.ts`, so a market reads "Will HBAR / USD be outside 0.1 and 0.12 at 9 Oct 2026, 16:00 UTC?" rather than the Scalar wording.
+8. In `packages/nextjs/components/PayoffDiagram.tsx`, make the upper-bound marker condition `kindUsesUpper(kind)`; the diagram samples `payoffPoints`, so the new branch in `lib/payoff.ts` already gives the right shape.
+9. Add Outside rows to `packages/nextjs/lib/__tests__/payoff.test.ts` in every block that enumerates kinds.
+
+API and record
+
+10. `packages/nextjs/app/api/_lib/markets.ts`: the `usesUpper` test, through `isKind` and `kindUsesUpper`.
+11. `packages/nextjs/app/api/_lib/messages.ts`: `KIND_NAMES` and the `usesUpper` test.
+12. `packages/nextjs/app/llms.txt/route.ts`: one line describing Outside.
+
+Scripts
+
+13. `packages/hardhat/scripts/lib/testnetMarket.ts`: `KIND` and `KIND_NAMES`, plus a `kindUsesUpper` helper.
+14. `packages/hardhat/scripts/create-market.ts`: the kind map and the `needsUpper` test, imported from `./lib/testnetMarket`.
+15. `packages/hardhat/scripts/record-sync.ts`: `KIND_NAMES` and the `usesUpper` test.
+
+Docs
+
+16. `README.md`: rename the heading "The four market kinds", add a paragraph for Outside and a payoff diagram at `docs/img/payoff-outside.svg` (Between inverted).
+
+Edge cases that decide correctness: `answer == upper` pays Outside in full and `answer == lower` pays it nothing, so Outside and Between stay complements.
 
 ## Non-goals
 
-- No changes to `createMarket`, split, merge, resolve, redeem or the router. The shared mechanism already handles a new kind.
+- No new logic in `createMarket` beyond the one bounds-check term, and none in split, merge, resolve, redeem or the router. The shared mechanism already handles a new kind.
+- No redeploy of the committed reference deployment in `packages/nextjs/contracts/deployedContracts.ts`; it does not know the new kind, and that is documented rather than fixed here.
 - No reordering of the `Kind` enum.
 - No new dependencies and no package manager switch.
 - No secrets and no `.env` files committed.
@@ -40,6 +69,8 @@ Edge cases that decide correctness: `answer == upper` pays Outside in full and `
 ## Acceptance (deterministic)
 
 1. `packages/hardhat/contracts/interfaces/IVerdict.sol` contains `Outside` in the `Kind` enum, appended after `Scalar`.
-2. `packages/hardhat/test/Verdict.test.ts` contains an Outside payoff table, and the contract suite passes.
-3. `node .harness/validators/check-outside-kind.mjs` passes.
-4. Compile, lint and the production build pass.
+2. `packages/hardhat/contracts/Verdict.sol` names `Kind.Outside` in both the bounds check and the payoff function.
+3. `packages/hardhat/test/helpers/verdict.ts` mirrors the value, `packages/hardhat/test/Verdict.test.ts` contains an Outside payoff table, and the contract suite passes.
+4. `packages/nextjs/lib/payoff.ts`, `lib/question.ts`, `app/api/_lib/messages.ts`, `app/llms.txt/route.ts`, `packages/hardhat/scripts/lib/testnetMarket.ts` and `scripts/record-sync.ts` name Outside, and `README.md` documents it with `docs/img/payoff-outside.svg`.
+5. `node .harness/validators/check-outside-kind.mjs` passes.
+6. Compile, both lints, both type checks, the frontend unit tests and the production build pass.

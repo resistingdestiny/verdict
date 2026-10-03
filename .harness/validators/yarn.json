@@ -1,6 +1,6 @@
 {
   "name": "verdict-outside-kind-yarn",
-  "description": "Commands that must pass after the Outside kind is added. Keep install named \"install\" for fingerprint skip across attempts.",
+  "description": "Commands that must pass after the Outside kind is added; they mirror the CI checks job. Keep install named \"install\" for fingerprint skip across attempts.",
   "requiresNoSecrets": true,
   "forbiddenCommands": [
     "npm install",
@@ -29,9 +29,21 @@
     },
     {
       "name": "lint",
-      "command": "yarn lint",
+      "command": "yarn next:lint --max-warnings=0 && yarn hardhat:lint --max-warnings=0",
       "timeoutMs": 300000,
-      "purpose": "Lint the frontend and the contracts."
+      "purpose": "Lint the frontend and the contracts with no warnings allowed, as CI does."
+    },
+    {
+      "name": "check-types",
+      "command": "yarn hardhat:check-types && yarn next:check-types",
+      "timeoutMs": 600000,
+      "purpose": "Type check both packages (the hardhat one prints nothing on success)."
+    },
+    {
+      "name": "frontend-tests",
+      "command": "yarn next:test",
+      "timeoutMs": 300000,
+      "purpose": "Frontend unit tests, which cover the payoff lib, the question text and the diagram helpers."
     },
     {
       "name": "build",
