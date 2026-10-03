@@ -47,6 +47,9 @@ jobs:
       - name: Contract tests
         run: yarn hardhat:test
 
+      - name: Frontend unit tests
+        run: yarn next:test
+
       - name: Build frontend
         run: yarn next:build
 
