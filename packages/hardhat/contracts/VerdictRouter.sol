@@ -136,8 +136,11 @@ contract VerdictRouter is IVerdictRouter {
         _approveHts(m.no, address(verdict), noIn);
         verdict.merge(id, noIn, address(this));
         uint256 refund = msg.value - needed;
+        // The slippage bound is on the net: the merged HBAR less what the YES cost. The refund of unspent
+        // msg.value is the caller's own money and never counts towards it.
+        uint256 net = needed < noIn ? noIn - needed : 0;
+        if (net < minHbarOut) revert Slippage(minHbarOut, net);
         hbarOut = noIn + refund;
-        if (hbarOut < minHbarOut) revert Slippage(minHbarOut, hbarOut);
         emit Traded(id, msg.sender, Trade.SellNo, noIn, noIn, refund);
         _sendHbar(msg.sender, hbarOut);
         _assertNothingKept(before, m.yes, m.no);
@@ -197,7 +200,7 @@ contract VerdictRouter is IVerdictRouter {
     function quoteSellNo(uint256 id, uint256 noIn) external view returns (uint256 hbarNeeded, uint256 hbarOut) {
         if (noIn == 0 || pairOf(id) == address(0)) return (0, 0);
         uint256[] memory amounts = saucerRouter.getAmountsIn(noIn, _path(whbar, _marketOf(id).yes));
-        return (amounts[0], noIn);
+        return (amounts[0], noIn > amounts[0] ? noIn - amounts[0] : 0);
     }
 
     // ---------------------------------------------------------------- internals

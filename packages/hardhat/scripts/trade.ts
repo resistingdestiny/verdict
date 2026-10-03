@@ -9,7 +9,8 @@ import { parseArgs, requireArgs, hashscanTx, WEIBARS_PER_TINYBAR } from "./lib/r
  *
  * `--amount` is HBAR for buyYes and buyNo, and whole tokens for sellYes and sellNo. sellNo also
  * sends enough HBAR to buy the matching YES, quoted just before the trade with the same 2 percent
- * bound. Prints the trade result and a HashScan link.
+ * headroom, and bounds the net (the NO's worth less the YES cost) with the same 2 percent.
+ * Prints the trade result and a HashScan link.
  */
 
 const SLIPPAGE_NUM = 98n;
@@ -52,12 +53,13 @@ async function main() {
     tx = await router.buyNo(id, minHbarBack, deadline, { value: hbarIn });
   } else if (args.trade === "sellNo") {
     const noIn = ethers.parseUnits(args.amount, 8);
-    const [needed] = await router.quoteSellNo(id, noIn);
+    const [needed, net] = await router.quoteSellNo(id, noIn);
     const value = (needed * SLIPPAGE_DEN * WEIBARS_PER_TINYBAR) / SLIPPAGE_NUM; // quote plus 2 percent headroom
+    const minHbarOut = (net * SLIPPAGE_NUM) / SLIPPAGE_DEN; // the net of the YES purchase, less 2 percent
     console.log(`Approving the Verdict router for ${noIn} NO units`);
     await (await hts.approve(market.no, routerDeployment.address, noIn)).wait();
-    console.log(`sellNo: ${noIn} NO units, YES quote ${needed} tinybars, min out ${noIn} tinybars`);
-    tx = await router.sellNo(id, noIn, noIn, deadline, { value });
+    console.log(`sellNo: ${noIn} NO units, YES quote ${needed} tinybars, net ${net} tinybars, min net ${minHbarOut}`);
+    tx = await router.sellNo(id, noIn, minHbarOut, deadline, { value });
   } else {
     throw new Error(`Unknown trade "${args.trade}". Known: buyYes, sellYes, buyNo, sellNo`);
   }

@@ -328,12 +328,12 @@ class World {
         const seller = await this.holder(m, signer, (mm, who) => mm.no.balanceOf(who));
         const held = m ? await m.no.balanceOf(seller.address) : 0n;
         const noIn = (held * BigInt(a.percent)) / 100n;
-        const [needed] =
+        const [needed, net] =
           m?.pool && noIn > 0n ? await this.quoteOrZeros(() => router.quoteSellNo(m.id, noIn)) : [0n, 0n];
         const value = a.short && needed > 0n ? needed - 1n : needed + a.extra;
         const deadline = a.late ? current - 1n : current + TRADE_DEADLINE;
         if (m) await m.no.connect(seller).approve(ctx.routerAddress, noIn);
-        await this.attempt("sellNo", router.connect(seller).sellNo(m?.id ?? bogus, noIn, noIn, deadline, { value }));
+        await this.attempt("sellNo", router.connect(seller).sellNo(m?.id ?? bogus, noIn, net, deadline, { value }));
         return;
       }
       case "timeTravel": {
