@@ -44,7 +44,7 @@ Three layout rules:
 
 ## Commands
 
-Run from the repo root. Use `npm run <script>` instead of `yarn <script>` when the project was scaffolded with npm.
+Run from the repo root. When the project was scaffolded with npm, swap the `yarn` prefix on each command for `npm run`.
 
 ```bash
 # Install and start the frontend (shows the committed testnet deployment)
@@ -76,7 +76,7 @@ yarn hardhat:account
 yarn hardhat:deploy --network hederaTestnet
 yarn hardhat:verify -- Verdict testnet [0xAddress]
 
-# README script check (CI runs this; every yarn script the docs name must exist)
+# README script check (CI runs this; every command the docs name must exist in a package.json)
 node scripts/check-readme-scripts.mjs
 ```
 

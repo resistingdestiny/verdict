@@ -34,7 +34,7 @@ npm create scaffold-hbar@latest verdict -- \
   --yes
 ```
 
-The `--` before `--template` matters: without it npm keeps the flag for itself. The project works with Yarn and with npm; the commands below use Yarn, so swap `yarn <script>` for `npm run <script>` if you scaffolded with npm.
+The `--` before `--template` matters: without it npm keeps the flag for itself. The project works with Yarn and with npm; the commands below use Yarn, so swap the `yarn` prefix for `npm run` if you scaffolded with npm.
 
 ## Deploy your own
 
