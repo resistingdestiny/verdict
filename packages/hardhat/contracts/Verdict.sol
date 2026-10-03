@@ -263,7 +263,9 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         if (id >= marketCount) return SettleOutcome.NoSuchMarket;
         Market storage m = _markets[id];
         if (m.status != Status.Open) return SettleOutcome.NotOpen;
-        if (block.timestamp < m.expiry) return SettleOutcome.NotExpired;
+        // The expiry second itself is still "not expired": the round current at expiry can only be known
+        // once that second has passed, and the schedule runs from the next second.
+        if (block.timestamp <= m.expiry) return SettleOutcome.NotExpired;
         (bool ok, int256 answer, uint80 roundId, uint64 updatedAt) = _reading(m);
         if (!ok) return SettleOutcome.NoFreshReading;
 
@@ -374,11 +376,11 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         return created;
     }
 
-    /// @dev Schedules `resolveScheduled(id)` at the first second from `expiry` with capacity, probing up to
+    /// @dev Schedules `resolveScheduled(id)` at the first second after `expiry` with capacity, probing up to
     ///      `MAX_SCHEDULE_PROBES` seconds forward. A failure never blocks creation: the market stays usable
     ///      through `resolve`, and `ScheduleFailed` carries the code.
     function _schedule(uint256 id, uint64 expiry) private returns (address) {
-        uint256 second = expiry;
+        uint256 second = uint256(expiry) + 1;
         for (uint256 i = 0; i < MAX_SCHEDULE_PROBES && !HSS.hasScheduleCapacity(second, RESOLVE_GAS); i++) {
             second += 1;
         }

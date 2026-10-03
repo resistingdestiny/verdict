@@ -155,7 +155,7 @@ describe("Coverage: edge paths of Verdict and VerdictRouter", function () {
     it("rejects a NO redemption beyond int64 even when the YES amount is fine", async function () {
       const { verdict, feed, bob } = ctx;
       await pushRound(feed, 1500n, expiry - 1n);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await verdict.resolve(id);
       await expect(verdict.connect(bob).redeem(id, 0n, INT64_MAX + 1n, bob.address)).to.be.revertedWithCustomError(
         verdict,

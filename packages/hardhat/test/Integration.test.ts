@@ -162,7 +162,7 @@ describe("Integration: VerdictRouter against Verdict", function () {
 
     // Settlement through the HSS mock at expiry, on the round current at expiry.
     const roundId = await pushRound(feed, ANSWER, expiry - 10n);
-    await setTime(expiry);
+    await setTime(expiry + 1n);
     const schedule = (await verdict.getMarket(id)).schedule;
     await expect(hss.executeSchedule(schedule))
       .to.emit(verdict, "Resolved")

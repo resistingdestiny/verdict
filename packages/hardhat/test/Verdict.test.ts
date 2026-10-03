@@ -123,7 +123,7 @@ describe("Verdict", function () {
       const scheduled = await hss.scheduleAt(m.schedule);
       expect(scheduled.to).to.equal(verdictAddress);
       expect(scheduled.payer).to.equal(verdictAddress);
-      expect(scheduled.expirySecond).to.equal(expiry);
+      expect(scheduled.expirySecond, "the run is scheduled for the second after expiry").to.equal(expiry + 1n);
       expect(scheduled.gasLimit).to.equal(2_000_000n);
       expect(scheduled.callData).to.equal(verdict.interface.encodeFunctionData("resolveScheduled", [0]));
       expect(await verdict.pendingReserves()).to.equal(RESERVE);
@@ -362,7 +362,7 @@ describe("Verdict", function () {
         await expectInvariants(ctx, [id]);
 
         const roundId = await pushRound(feed, c.answer, expiry - 10n);
-        await setTime(expiry);
+        await setTime(expiry + 1n);
         const schedule = (await verdict.getMarket(id)).schedule;
         await expect(hss.executeSchedule(schedule))
           .to.emit(verdict, "Resolved")
@@ -491,7 +491,11 @@ describe("Verdict", function () {
       const { id, expiry } = await createMarket(ctx, { kind: Kind.Above, lower: 1n });
       await pushRound(feed, 2n, await now());
       await expect(verdict.resolve(id)).to.be.revertedWithCustomError(verdict, "MarketNotExpired").withArgs(id);
-      await setTime(expiry);
+      // The expiry second itself is still too early (review L2): the reading at expiry is only final after it.
+      // setNextTime pins the resolve transaction's own block to that second.
+      await setNextTime(expiry);
+      await expect(verdict.resolve(id)).to.be.revertedWithCustomError(verdict, "MarketNotExpired").withArgs(id);
+      await setTime(expiry + 1n);
       await expect(verdict.resolve(id))
         .to.emit(verdict, "Resolved")
         .withArgs(id, ONE_HBAR, 2n, anyValue, anyValue, false);
@@ -519,7 +523,7 @@ describe("Verdict", function () {
       const { verdict, hss, feed } = ctx;
       const { id, expiry } = await createMarket(ctx, { kind: Kind.Above, lower: 1000n });
       await pushRound(feed, 1100n, expiry - 1n);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await verdict.resolve(id);
       await pushRound(feed, 1n, expiry);
       await expect(verdict.resolve(id)).to.be.revertedWithCustomError(verdict, "MarketNotOpen");
@@ -538,7 +542,9 @@ describe("Verdict", function () {
       const { id, expiry } = await createMarket(ctx, { kind: Kind.Above, lower: 1n });
       await expect(verdict.resolveScheduled(99)).to.emit(verdict, "ResolveDeferred").withArgs(99, "no such market");
       await expect(verdict.resolveScheduled(id)).to.emit(verdict, "ResolveDeferred").withArgs(id, "not expired");
-      await setTime(expiry);
+      await setNextTime(expiry);
+      await expect(verdict.resolveScheduled(id)).to.emit(verdict, "ResolveDeferred").withArgs(id, "not expired");
+      await setTime(expiry + 1n);
       await expect(verdict.resolveScheduled(id)).to.emit(verdict, "ResolveDeferred").withArgs(id, "no fresh reading");
       await pushRound(feed, 2n, expiry);
       await expect(verdict.resolveScheduled(id))
@@ -557,7 +563,7 @@ describe("Verdict", function () {
         .connect(alice)
         .createMarket(failing, ethers.ZeroHash, Kind.Above, 0n, 0n, expiry, { value: creationCost });
       await failing.setReverting(true);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await expect(verdict.resolve(0)).to.be.revertedWithCustomError(verdict, "NoFreshReading").withArgs(0);
       await expect(verdict.resolveScheduled(0)).to.emit(verdict, "ResolveDeferred").withArgs(0, "no fresh reading");
       await setTime(expiry + DAY);
@@ -637,7 +643,7 @@ describe("Verdict", function () {
       const { id, expiry, yes, no } = await createMarket(ctx, { kind: Kind.Above, lower: 1n });
       await verdict.connect(alice).split(id, alice.address, alice.address, { value: 4n * ONE_HBAR });
       await pushRound(feed, 2n, expiry - SIX_HOURS - 1n);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await expect(verdict.resolve(id)).to.be.revertedWithCustomError(verdict, "NoFreshReading").withArgs(id);
       await expect(hss.executeSchedule((await verdict.getMarket(id)).schedule))
         .to.emit(verdict, "ResolveDeferred")
@@ -692,7 +698,7 @@ describe("Verdict", function () {
       const { id, expiry, yes, no } = await createMarket(ctx, { kind: Kind.Scalar, lower: 0n, upper: 3n });
       await verdict.connect(alice).split(id, alice.address, alice.address, { value: 10n });
       await pushRound(feed, 1n, expiry);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await verdict.resolve(id);
       expect((await verdict.getMarket(id)).payout).to.equal(33_333_333n);
       await approveBoth(ctx, alice, yes, no, 10n);
@@ -715,7 +721,7 @@ describe("Verdict", function () {
         .to.be.revertedWithCustomError(verdict, "MarketNotSettled")
         .withArgs(id);
       await pushRound(feed, 2n, expiry);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await verdict.resolve(id);
       await expect(verdict.connect(alice).redeem(id, 0n, 0n, alice.address)).to.be.revertedWithCustomError(
         verdict,
@@ -815,7 +821,7 @@ describe("Verdict", function () {
       expect(m.schedule).to.equal(ethers.ZeroAddress);
       expect(m.reserve).to.equal(RESERVE);
       await pushRound(feed, 2n, expiry);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await expect(verdict.resolve(0)).to.emit(verdict, "Resolved");
     });
 
@@ -823,15 +829,15 @@ describe("Verdict", function () {
       const ctx = await loadFixture(deployVerdict);
       const { verdict, hss, feed } = ctx;
       const expiry = (await now()) + HOUR;
-      await hss.setBusy(expiry, true);
       await hss.setBusy(expiry + 1n, true);
+      await hss.setBusy(expiry + 2n, true);
       const { id } = await createMarket(ctx, { kind: Kind.Above, lower: 1n, expiry });
       const schedule = (await verdict.getMarket(id)).schedule;
-      expect((await hss.scheduleAt(schedule)).expirySecond).to.equal(expiry + 2n);
+      expect((await hss.scheduleAt(schedule)).expirySecond).to.equal(expiry + 3n);
       // The scheduled run happens two seconds late and still settles on the reading at expiry.
       await pushRound(feed, 7n, expiry - 1n);
       await pushRound(feed, 1n, expiry + 1n);
-      await setTime(expiry + 2n);
+      await setTime(expiry + 3n);
       await expect(hss.executeSchedule(schedule))
         .to.emit(verdict, "Resolved")
         .withArgs(id, ONE_HBAR, 7n, anyValue, expiry - 1n, true);
@@ -841,7 +847,7 @@ describe("Verdict", function () {
       const ctx = await loadFixture(deployVerdict);
       const { verdict, hss } = ctx;
       const expiry = (await now()) + HOUR;
-      for (let i = 0n; i <= 8n; i++) await hss.setBusy(expiry + i, true);
+      for (let i = 1n; i <= 9n; i++) await hss.setBusy(expiry + i, true);
       await expect(
         verdict
           .connect(ctx.alice)
@@ -876,7 +882,7 @@ describe("Verdict", function () {
       );
 
       await pushRound(feed, 2n, expiry);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await verdict.resolve(id);
       await expect(verdict.connect(owner).sweepSurplus(bob.address)).to.changeEtherBalances(
         [verdict, bob],
@@ -939,7 +945,7 @@ describe("Verdict", function () {
     it("re-entering redeem or split from a redemption payment is blocked too", async function () {
       const { ctx, hostile, id, expiry } = await hostileMarket();
       await pushRound(ctx.feed, 2n, expiry);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await ctx.verdict.resolve(id);
       await hostile.arm(2, id, true);
       await expect(hostile.callRedeem(id, 100n, 0n)).to.changeEtherBalances([ctx.verdict, hostile], [-100n, 100n]);
@@ -981,7 +987,7 @@ describe("Verdict", function () {
         if (moved > 0n) await yes.connect(alice).transfer(bob.address, moved);
 
         await pushRound(feed, random(upper + 1n), expiry);
-        await setTime(expiry);
+        await setTime(expiry + 1n);
         await verdict.resolve(id);
         const collateralBefore = (await verdict.getMarket(id)).collateral;
         expect(collateralBefore).to.equal(aliceStake + bobStake);
