@@ -9,6 +9,7 @@
     "chain": "HEDERA_FORKING=true hardhat node --network hardhat --no-deploy",
     "check-types": "tsc --noEmit --incremental",
     "compile": "hardhat compile",
+    "coverage": "REPORT_GAS=false hardhat coverage",
     "clean": "hardhat clean",
     "deploy": "ts-node scripts/runHardhatDeployWithPK.ts",
     "flatten": "hardhat flatten",
@@ -17,6 +18,7 @@
     "lint": "eslint",
     "lint-staged": "eslint",
     "test": "hardhat test",
+    "test:property": "VERDICT_PROPERTY=1 hardhat test test/Invariants.property.test.ts",
     "verify:contract": "ts-node scripts/verifySourcify.ts"
   },
   "devDependencies": {

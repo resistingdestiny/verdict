@@ -1,0 +1,6 @@
+{
+  "filter_paths": "node_modules|mocks|spikes",
+  "exclude_informational": false,
+  "exclude_low": false,
+  "fail_on": "medium"
+}
