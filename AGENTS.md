@@ -110,6 +110,7 @@ yarn workspace @sh/hardhat hardhat run scripts/create-market.ts --network hedera
 - HTS goes through the system contract at `0x167`, never through a deployed ERC-20. Use the system contract interfaces the project already imports; do not hand-write ABIs. Amounts are `int64` at the HTS boundary: bound inputs and cast safely.
 - HSS goes through the system contract at `0x16b`. `scheduleCall` does not revert: check for code 22 and a non-zero schedule address. Call `hasScheduleCapacity` first and probe forward on a busy second. Enforce the scheduling horizon in `createMarket`, with a minimum of 5 minutes ahead.
 - Collateral is tracked in storage, never inferred from the balance: native transfers can change a contract's balance without running its code.
+- EVM target. The scaffold compiles for paris because Hedera does not support Cancun opcodes. OpenZeppelin 5.6 `Strings` imports `Bytes.sol`, which needs `mcopy`, so do not import it; `Verdict.sol` renders token names with its own `_decimal` helper.
 - Hedera is a public ledger, never a blockchain. HBAR is uppercase and singular, tinybars lowercase and plural, network names lowercase (Hedera testnet).
 - External addresses live only in `packages/hardhat/config/addresses.ts`.
 - `.env` files are git-ignored. Never commit one and never print a private key.

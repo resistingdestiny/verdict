@@ -28,15 +28,13 @@ Enum order is storage layout, so append only. Never insert or reorder.
 
 ## 2. The payoff branch
 
-The payoff rule is a pure internal function in `packages/hardhat/contracts/Verdict.sol`, the same one `payoutFor` exposes. Add one branch:
+The payoff rule is a pure private function `_payout` in `packages/hardhat/contracts/Verdict.sol`, one early return per kind, and `payoutFor` exposes it as a view. Add one line:
 
 ```solidity
-} else if (kind == Kind.Outside) {
-    return answer < lower || answer >= upper ? PAYOUT_FULL : 0;
-}
+if (kind == Kind.Outside) return answer < lower || answer >= upper ? ONE_HBAR : 0;
 ```
 
-`PAYOUT_FULL` is 100,000,000 tinybars per whole token. Bounds arrive in the feed's own decimals, so the branch compares `answer` against `lower` and `upper` directly, with no scaling.
+`ONE_HBAR` is 100,000,000 tinybars per whole token. Bounds arrive in the feed's own decimals, so the branch compares `answer` against `lower` and `upper` directly, with no scaling.
 
 Note the asymmetry with Between: Between pays inside `[lower, upper)`, Outside pays outside it, so `answer == upper` pays Outside in full and `answer == lower` pays it nothing. Match these edges in the test table below, or the two kinds stop being complements.
 

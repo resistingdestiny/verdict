@@ -26,6 +26,7 @@ The owner cannot:
 ## Oracle and liquidity risks
 
 - **Stale feed.** Each allowlisted feed has a maximum staleness. A round older than the expiry minus that limit is rejected, `resolve` reverts with `NoFreshReading`, and `resolveScheduled` emits `ResolveDeferred`. The market then relies on manual `resolve` attempts and, failing those, the void path.
+- **Broken resolver.** A resolver that reverts counts as "no fresh reading" for `resolve`, `resolveScheduled` and `voidMarket`: a broken oracle takes the void path and can never brick a market with a raw revert.
 - **Missing round history.** The resolver finds the round current at expiry by walking `getRoundData` back from the latest round, capped at 32 steps. History is confirmed on Hedera testnet for the three allowlisted feeds. For any other aggregator, resolution degrades to the void path when history runs out before the expiry second.
 - **Slow testnet cadence.** Testnet feeds update on deviation: observed gaps run from about 30 seconds to about an hour on HBAR / USD and up to about 10 hours on BTC / USD and ETH / USD. The allowlist sets staleness per feed from that cadence (6 hours for HBAR / USD, 24 hours for BTC / USD and ETH / USD, in `packages/hardhat/config/addresses.ts`); a feed slower than its limit voids markets that should have settled.
 - **Liquidity is thin by design.** The reference pools are seeded small (for example 20 YES against 10 HBAR). Quotes move the price, and large trades get little depth. This is a template, not a venue.
