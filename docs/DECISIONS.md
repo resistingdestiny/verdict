@@ -45,6 +45,13 @@ Each entry is a decision the brief left open, a spike finding, or a cut, with on
 | 2026-10-02 | Mock LP tokens are internal accounting on the pair, not HTS tokens. | The router never touches LP tokens; the association problem for contract-held LP is the series stream's spike 7. |
 | 2026-10-02 | The mock SaucerSwap router supports only two-address paths. | Verdict markets only ever trade YES against WHBAR; longer paths are dead code in a mock. |
 | 2026-10-02 | Mocha timeout raised to 600s in `hardhat.config.ts`, and the router test fixture deploys once and reverts to a snapshot per test. | Load average on the shared box passed 100 during the build; mock-heavy fixtures timed out at 120s and redeploying per test multiplied the cost. |
+| 2026-10-03 | HCS messages are built in `app/api/_lib/messages.ts` and re-implemented in `scripts/record-sync.ts`. | The hardhat package has no viem, so the builders cannot be shared across packages; both produce the same two shapes from the brief. |
+| 2026-10-03 | The topic is created by `packages/nextjs/scripts/create-topic.mjs`, invoked by deploy step `03_create_hcs_topic.ts` through `node`. | The Hiero SDK is installed only in the nextjs package, and a plain `.mjs` script needs no ts-node there; the deploy step skips without operator env or off testnet. |
+| 2026-10-03 | The `tx` field of record messages is `payer@seconds.nanos` derived from the mirror contract result's `from` and `timestamp`. | The mirror node does not return the consensus transaction id on contract results, and HashScan links resolve this form. |
+| 2026-10-03 | Void markets are recorded as `market_settled` with `settledBy: "void"` and null `answer`, `roundId` and `updatedAt`. | The brief fixes the shape but a void has no reading, so the reading fields are null rather than fabricated. |
+| 2026-10-03 | Frontend test files (`**/*.test.ts(x)`) are excluded from the nextjs `tsc` run until vitest lands. | vitest is not installed (dependency shared with the frontend stream), and `yarn next:check-types` must stay green meanwhile. |
+| 2026-10-03 | Question text lives in `lib/question.ts`, not the frontend stream's `lib/payoff.ts`. | `lib/payoff.ts` did not exist when the API routes were built; the brief names `lib/question.ts` as the fallback. |
+| 2026-10-03 | `agent-trade.ts` multiplies tinybars by 1e10 for `msg.value`. | On the ledger values are tinybars (8 decimals) but the JSON-RPC relay speaks weibars (18 decimals). |
 
 ## Spike findings
 
