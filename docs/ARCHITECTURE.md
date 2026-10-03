@@ -1,6 +1,6 @@
 # Architecture
 
-How Verdict is put together: the contracts, the calls between them, and the flows for create, trade, scheduled resolution and the series roll. The interfaces in `packages/hardhat/contracts/interfaces/` are frozen and are the ground truth; this document explains them.
+How Verdict is put together: the contracts, the calls between them, and the flows for create, trade, scheduled resolution and the series roll. The interfaces in `packages/hardhat/contracts/interfaces/` are frozen (except for appending `Kind` values, which is how a market kind is added) and are the ground truth; this document explains them.
 
 ## The contracts and their calls
 
