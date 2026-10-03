@@ -144,3 +144,27 @@ export function feedIdOf(aggregator: string): `0x${string}` {
   if (!/^[0-9a-f]{40}$/.test(hex)) throw new Error(`not an EVM address: ${aggregator}`);
   return `0x${hex.padStart(64, "0")}`;
 }
+
+/**
+ * Flat view of the testnet addresses for the command line scripts (create-market, seed-pool, trade) and the
+ * router deploy script. Same values as above, keyed the way those scripts read them.
+ */
+export const TESTNET_ADDRESSES = {
+  hts: hederaSystem.hts.address,
+  exchangeRate: hederaSystem.exchangeRate.address,
+  hss: hederaSystem.hss.address,
+  saucerswap: {
+    factory: hederaTestnetSaucerSwap.factory.address,
+    router: hederaTestnetSaucerSwap.router.address,
+    whbarContract: hederaTestnetSaucerSwap.whbarContract.address,
+    whbarToken: hederaTestnetSaucerSwap.whbarToken.address,
+  },
+  chainlink: {
+    "HBAR/USD": { feed: hederaTestnetFeeds.hbarUsd.address, decimals: hederaTestnetFeeds.hbarUsd.decimals },
+    "BTC/USD": { feed: hederaTestnetFeeds.btcUsd.address, decimals: hederaTestnetFeeds.btcUsd.decimals },
+    "ETH/USD": { feed: hederaTestnetFeeds.ethUsd.address, decimals: hederaTestnetFeeds.ethUsd.decimals },
+  } as Record<string, { feed: `0x${string}`; decimals: number }>,
+} as const;
+
+/** Alias of `feedIdOf` under the name the scripts use. */
+export const feedIdFor = feedIdOf;
