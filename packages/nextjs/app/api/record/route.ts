@@ -58,6 +58,11 @@ function eventSelector(abi: unknown, name: string): `0x${string}` | null {
 }
 
 /** The `0.0.x@seconds.nanos` id of the transaction behind a mirror transaction hash. */
+/** A 0x-prefixed 32-byte hex key is ECDSA; `PrivateKey.fromString` would read it as ED25519. */
+function operatorPrivateKey(key: string): PrivateKey {
+  return /^(0x)?[0-9a-fA-F]{64}$/.test(key) ? PrivateKey.fromStringECDSA(key) : PrivateKey.fromString(key);
+}
+
 async function transactionIdFor(txHash: string): Promise<string | null> {
   const result = await getContractResultByHash(txHash, { baseUrl: verdictConfig.mirrorNodeUrl });
   const payer = await evmToAccountId(result.from, { baseUrl: verdictConfig.mirrorNodeUrl });
@@ -259,7 +264,7 @@ async function submitToTopic(
   operatorKey: string,
   messages: string[],
 ): Promise<number[]> {
-  const client = Client.forTestnet().setOperator(AccountId.fromString(operatorId), PrivateKey.fromString(operatorKey));
+  const client = Client.forTestnet().setOperator(AccountId.fromString(operatorId), operatorPrivateKey(operatorKey));
   try {
     const sequenceNumbers: number[] = [];
     for (const text of messages) {

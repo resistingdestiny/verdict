@@ -289,7 +289,9 @@ async function syncDirect(topicId: string, operatorId: string, operatorKey: stri
   const sdk = loadSdk();
   const client = sdk.Client.forTestnet().setOperator(
     sdk.AccountId.fromString(operatorId),
-    sdk.PrivateKey.fromString(operatorKey),
+    /^(0x)?[0-9a-fA-F]{64}$/.test(operatorKey)
+      ? sdk.PrivateKey.fromStringECDSA(operatorKey)
+      : sdk.PrivateKey.fromString(operatorKey),
   );
   let written = 0;
   try {

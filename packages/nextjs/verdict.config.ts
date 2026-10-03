@@ -11,7 +11,7 @@ export type VerdictConfig = {
 };
 
 const verdictConfig: VerdictConfig = {
-  hcsTopicId: null,
+  hcsTopicId: "0.0.10844224",
   mirrorNodeUrl: "https://testnet.mirrornode.hedera.com",
   hashScanUrl: "https://hashscan.io/testnet",
 };

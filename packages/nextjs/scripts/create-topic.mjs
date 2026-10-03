@@ -42,7 +42,11 @@ async function main() {
     return;
   }
 
-  const key = PrivateKey.fromString(operatorKey);
+  // A 0x-prefixed 32-byte hex key is an ECDSA key (the form portal.hedera.com and EVM tooling hand out);
+  // PrivateKey.fromString would read it as ED25519 and every transaction would fail INVALID_SIGNATURE.
+  const key = /^(0x)?[0-9a-fA-F]{64}$/.test(operatorKey)
+    ? PrivateKey.fromStringECDSA(operatorKey)
+    : PrivateKey.fromString(operatorKey);
   const client = Client.forTestnet().setOperator(AccountId.fromString(operatorId), key);
   try {
     const response = await new TopicCreateTransaction()
