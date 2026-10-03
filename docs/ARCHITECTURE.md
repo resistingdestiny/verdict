@@ -209,5 +209,5 @@ No scheduled step ever reverts; each emits an event, and `poke()` lets anyone ru
 
 ## Where everything else lives
 
-- The HCS record: `/api/record` builds each message from the transaction's Verdict events read through the mirror node, never from the request body, and writes each message once. `scripts/record-sync.ts` does the same from the command line. There are two message types, `market_created` and `market_settled` (a void is a settlement at the 0.5 HBAR payout); the shapes and builders live in `packages/nextjs/app/api/_lib/messages.ts`.
+- The HCS record: `/api/record` builds each message from the transaction's Verdict events read through the mirror node, never from the request body, and writes each message once. `packages/hardhat/scripts/record-sync.ts` does the same from the command line. There are two message types, `market_created` and `market_settled` (a void is a settlement at the 0.5 HBAR payout); the shapes and builders live in `packages/nextjs/app/api/_lib/messages.ts`.
 - The frontend reads contract views and events only; the mirror node covers what views cannot (the record feed, odds history from pool `Sync` events). External addresses come from `packages/hardhat/config/addresses.ts`, the only file with hard-coded addresses, each entry with its source URL and the date checked.
