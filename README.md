@@ -230,6 +230,8 @@ Problems hit during this build, with what caused them and what to do. If you hit
 
 | What you see | Why | What to do |
 | --- | --- | --- |
+| `yarn format` rewrites files you never touched | It runs Prettier over both packages, so any file that has drifted from the Prettier style is rewritten along with yours | Format only your files: `yarn workspace @sh/nextjs prettier --write <files>` or `yarn workspace @sh/hardhat prettier --write <files>`. On a clean tree `yarn format` is a no-op; if it is not, the drift was committed earlier and is worth its own commit |
+| `git commit` sits for minutes with no output | The husky pre-commit hook runs lint-staged: `next lint --fix` plus the frontend `tsc` over staged frontend files and `eslint --fix` over staged hardhat files, which is slow on a loaded machine | Wait, or run the lints and type checks by hand (see the CI table in `AGENTS.md`) and commit with `--no-verify` |
 | `yarn hardhat:deploy` does not reach the node on port 8545 | Without `--network localhost` Hardhat uses the in-process network, not the running node | Pass `--network localhost` while `yarn hardhat:chain` runs |
 | Deploy or verify fails with "Sender account not found" | The deployer account has no HBAR on the target network | Fund it at [portal.hedera.com](https://portal.hedera.com/faucet) |
 | `hardhat-verify` fails against Sourcify | The Sourcify API v1 that Hardhat 2 plugins speak was removed | Use `yarn hardhat:verify`, which submits to the Sourcify API v2 |
@@ -275,7 +277,7 @@ Problems hit during this build, with what caused them and what to do. If you hit
 
 ## Extending
 
-- **New market kind.** One enum value, one payoff branch, one test table, one label, one diagram. The full walkthrough that adds an Outside kind is [docs/TUTORIAL.md](docs/TUTORIAL.md).
+- **New market kind.** The mechanism is shared, so a kind is an enum value, a bounds-check term and a payoff branch in the contract, plus a line in each place the kind list is duplicated: the test helper's enum mirror, the frontend lib, the question text, the JSON API and HCS message builders, the scripts, this README and a payoff SVG. `rg -n "Kind.Scalar|kind === 3|Scalar" packages` finds them all; the ordered checklist is in [AGENTS.md](AGENTS.md) and the full walkthrough that adds an Outside kind is [docs/TUTORIAL.md](docs/TUTORIAL.md). The committed reference deployment does not know a new kind, so redeploy afterwards.
 - **Other oracles.** Implement `IResolver` (`readingAt`, `describe`, `feedDecimals`), deploy it, and have the owner allow it with `setResolver`. `resolvers/ChainlinkResolver.sol` is the reference; a guarded resolver that cross-checks a second oracle is sketched in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **Other collateral.** Out of scope for this template. The split, merge and redeem path assumes HBAR in tinybars, so changing the collateral means reworking the collateral accounting in `Verdict.sol`.
 - **Other venues.** SaucerSwap V2 pools suit outcome tokens because their price is bounded between 0 and 1 HBAR. The core and router boundary means a new venue touches only `VerdictRouter.sol`; collateral code never changes. Limit orders, protocol fees and governance are further extensions in the same layer.
