@@ -27,6 +27,7 @@ contract MockHederaScheduleService is IHederaScheduleService {
     mapping(uint256 second => bool) public busySecond;
     uint256 private _maxHorizon;
     int64 private _forcedCode;
+    bool private _capacityReverts;
 
     event ScheduleCreated(address indexed schedule, address indexed payer, address to, uint256 expirySecond);
     event ScheduleExecuted(address indexed schedule, bool success, bytes result);
@@ -44,6 +45,11 @@ contract MockHederaScheduleService is IHederaScheduleService {
     /// @notice Make the next `scheduleCall` return `code` instead of scheduling. Zero clears it.
     function setForcedCode(int64 code) external {
         _forcedCode = code;
+    }
+
+    /// @notice Make `hasScheduleCapacity` revert instead of answering, until cleared.
+    function setCapacityReverts(bool reverts) external {
+        _capacityReverts = reverts;
     }
 
     function maxHorizon() public view returns (uint256) {
@@ -68,6 +74,7 @@ contract MockHederaScheduleService is IHederaScheduleService {
     // ---------------------------------------------------------------- IHederaScheduleService
 
     function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) public view returns (bool) {
+        require(!_capacityReverts, "MockHederaScheduleService: capacity probe reverts");
         if (gasLimit == 0 || gasLimit > 15_000_000) return false;
         if (expirySecond <= block.timestamp) return false;
         if (expirySecond > block.timestamp + maxHorizon()) return false;

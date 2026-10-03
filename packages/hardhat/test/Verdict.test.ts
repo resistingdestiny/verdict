@@ -833,22 +833,50 @@ describe("Verdict", function () {
       expect(code).to.equal(CODE_INVALID_SIGNATURE);
     });
 
-    it("an HSS failure does not block creation: ScheduleFailed carries the code and resolve still works", async function () {
+    it("an HSS failure does not block creation: ScheduleFailed carries the code, no reserve is charged, resolve still works", async function () {
       const ctx = await loadFixture(deployVerdict);
-      const { verdict, hss, feed, alice, resolver, feedId, creationCost } = ctx;
+      const { verdict, hss, feed, alice, owner, bob, resolver, feedId, creationCost } = ctx;
       await hss.setForcedCode(CODE_SCHEDULE_TOO_FAR);
       const expiry = (await now()) + HOUR;
-      await expect(
-        verdict.connect(alice).createMarket(resolver, feedId, Kind.Above, 1n, 0n, expiry, { value: creationCost }),
-      )
-        .to.emit(verdict, "ScheduleFailed")
-        .withArgs(0, CODE_SCHEDULE_TOO_FAR);
+      const tx = verdict
+        .connect(alice)
+        .createMarket(resolver, feedId, Kind.Above, 1n, 0n, expiry, { value: creationCost });
+      await expect(tx).to.emit(verdict, "ScheduleFailed").withArgs(0, CODE_SCHEDULE_TOO_FAR);
+      // With no schedule there is nothing for a reserve to pay for (review L5): the creator is charged the
+      // token creations only and the reserve comes back in the refund.
+      await expect(tx).to.changeEtherBalances([alice, verdict], [-(2n * ONE_HBAR), 0n]);
       const m = await verdict.getMarket(0);
       expect(m.schedule).to.equal(ethers.ZeroAddress);
-      expect(m.reserve).to.equal(RESERVE);
+      expect(m.reserve).to.equal(0n);
+      expect(await verdict.pendingReserves()).to.equal(0n);
+      await expect(verdict.connect(owner).sweepSurplus(bob.address)).to.be.revertedWithCustomError(
+        verdict,
+        "NothingToSweep",
+      );
       await pushRound(feed, 2n, expiry);
       await setTime(expiry + 1n);
       await expect(verdict.resolve(0)).to.emit(verdict, "Resolved");
+      await expectInvariants(ctx, [0n]);
+    });
+
+    it("a capacity probe that reverts reads as no capacity and never blocks creation", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, hss } = ctx;
+      const expiry = (await now()) + HOUR;
+      await hss.setCapacityReverts(true);
+      const before = await hss.scheduleCount();
+      await expect(
+        verdict
+          .connect(ctx.alice)
+          .createMarket(ctx.resolver, ctx.feedId, Kind.Above, 1n, 0n, expiry, { value: ctx.creationCost }),
+      )
+        .to.emit(verdict, "ScheduleFailed")
+        .withArgs(0, CODE_SCHEDULE_EXPIRY_BUSY);
+      expect(await hss.scheduleCount(), "no schedule was attempted").to.equal(before);
+      expect((await verdict.getMarket(0)).reserve).to.equal(0n);
+      await hss.setCapacityReverts(false);
+      const { id } = await createMarket(ctx, { kind: Kind.Above, lower: 1n, expiry });
+      expect((await verdict.getMarket(id)).schedule).to.not.equal(ethers.ZeroAddress);
     });
 
     it("a full expiry second makes createMarket schedule at the next free second", async function () {
@@ -869,11 +897,14 @@ describe("Verdict", function () {
         .withArgs(id, ONE_HBAR, 7n, anyValue, expiry - 1n, true);
     });
 
-    it("when every probed second is full the schedule fails with the busy code and the market stays usable", async function () {
+    it("when every probed second is full the schedule fails with the busy code without a scheduleCall, and the market stays usable", async function () {
       const ctx = await loadFixture(deployVerdict);
       const { verdict, hss } = ctx;
       const expiry = (await now()) + HOUR;
-      for (let i = 1n; i <= 9n; i++) await hss.setBusy(expiry + i, true);
+      // The eight seconds after expiry are probed; the eighth is checked like the others, so nothing is
+      // scheduled blind beyond it.
+      for (let i = 1n; i <= 8n; i++) await hss.setBusy(expiry + i, true);
+      const before = await hss.scheduleCount();
       await expect(
         verdict
           .connect(ctx.alice)
@@ -881,7 +912,13 @@ describe("Verdict", function () {
       )
         .to.emit(verdict, "ScheduleFailed")
         .withArgs(0, CODE_SCHEDULE_EXPIRY_BUSY);
+      expect(await hss.scheduleCount(), "no schedule was attempted").to.equal(before);
       expect((await verdict.getMarket(0)).schedule).to.equal(ethers.ZeroAddress);
+      expect((await verdict.getMarket(0)).reserve).to.equal(0n);
+      // Free the eighth second and the next market lands there.
+      await hss.setBusy(expiry + 8n, false);
+      const { id } = await createMarket(ctx, { kind: Kind.Above, lower: 1n, expiry });
+      expect((await hss.scheduleAt((await verdict.getMarket(id)).schedule)).expirySecond).to.equal(expiry + 8n);
     });
   });
 

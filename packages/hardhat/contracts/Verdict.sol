@@ -111,17 +111,21 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         m.createdAt = uint64(block.timestamp);
         m.lower = lower;
         m.upper = upper;
-        m.reserve = RESOLUTION_RESERVE;
-        pendingReserves += RESOLUTION_RESERVE;
 
         // The charge is what the token creations and the scheduling actually consumed, measured across both
-        // from the balance, plus the reserve. It is checked against msg.value because the upfront cost is an
-        // estimate: the HTS fee is USD-denominated and HSS may charge the payer at scheduling time.
+        // from the balance, plus the reserve when a schedule exists to spend it. It is checked against
+        // msg.value because the upfront cost is an estimate: the HTS fee is USD-denominated and HSS may
+        // charge the payer at scheduling time.
         uint256 balanceBefore = address(this).balance;
         _createTokens(m, id);
         // slither-disable-next-line reentrancy-eth
         m.schedule = _schedule(id, expiry);
-        uint256 charge = balanceBefore - address(this).balance + RESOLUTION_RESERVE;
+        uint256 charge = balanceBefore - address(this).balance;
+        if (m.schedule != address(0)) {
+            m.reserve = RESOLUTION_RESERVE;
+            pendingReserves += RESOLUTION_RESERVE;
+            charge += RESOLUTION_RESERVE;
+        }
         if (charge > msg.value) revert InsufficientValue(charge, msg.value);
         _emitCreated(id, m);
 
@@ -380,13 +384,20 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         return created;
     }
 
-    /// @dev Schedules `resolveScheduled(id)` at the first second after `expiry` with capacity, probing up to
-    ///      `MAX_SCHEDULE_PROBES` seconds forward. A failure never blocks creation: the market stays usable
-    ///      through `resolve`, and `ScheduleFailed` carries the code.
+    /// @dev Schedules `resolveScheduled(id)` at the first of the `MAX_SCHEDULE_PROBES` seconds after `expiry`
+    ///      that has capacity. When none has, no schedule is attempted and `ScheduleFailed` carries the busy
+    ///      code HSS gives a full second. A failure never blocks creation: the market stays usable through
+    ///      `resolve`, no reserve is charged, and `ScheduleFailed` carries the code.
     function _schedule(uint256 id, uint64 expiry) private returns (address) {
-        uint256 second = uint256(expiry) + 1;
-        for (uint256 i = 0; i < MAX_SCHEDULE_PROBES && !HSS.hasScheduleCapacity(second, RESOLVE_GAS); i++) {
-            second += 1;
+        uint256 second = 0;
+        bool found = false;
+        for (uint256 i = 1; i <= MAX_SCHEDULE_PROBES && !found; i++) {
+            second = uint256(expiry) + i;
+            found = _hasCapacity(second);
+        }
+        if (!found) {
+            emit ScheduleFailed(id, HederaCodes.SCHEDULE_EXPIRY_IS_BUSY);
+            return address(0);
         }
         (int64 code, address schedule) = HSS.scheduleCall(
             address(this),
@@ -400,6 +411,15 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
             return address(0);
         }
         return schedule;
+    }
+
+    /// @dev The capacity probe never reverts creation: a probe that fails reads as no capacity.
+    function _hasCapacity(uint256 second) private view returns (bool) {
+        try HSS.hasScheduleCapacity(second, RESOLVE_GAS) returns (bool ok) {
+            return ok;
+        } catch {
+            return false;
+        }
     }
 
     function _emitCreated(uint256 id, Market storage m) private {
