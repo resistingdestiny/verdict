@@ -177,8 +177,8 @@ export async function marketToJson(id: bigint, raw: RawMarket): Promise<MarketJs
   const hasPair = pair && pair.toLowerCase() !== ZERO_ADDRESS;
   const pairId = hasPair ? await hederaId(pair) : null;
 
-  const yesReserve = reserves ? (Array.isArray(reserves) ? reserves[0] : reserves.yesReserve) : null;
-  const hbarReserve = reserves ? (Array.isArray(reserves) ? reserves[1] : reserves.hbarReserve) : null;
+  const yesReserve = reserves ? ("yesReserve" in reserves ? reserves.yesReserve : reserves[0]) : null;
+  const hbarReserve = reserves ? ("hbarReserve" in reserves ? reserves.hbarReserve : reserves[1]) : null;
   const usesUpper = raw.kind === 2 || raw.kind === 3;
   const settled = raw.status === 1 || raw.status === 2;
 

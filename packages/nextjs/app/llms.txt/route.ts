@@ -1,4 +1,4 @@
-import { VERDICT_CHAIN_ID, getDeployedContract } from "~~/app/api/_lib/verdict";
+import { getDeployedContract } from "~~/app/api/_lib/verdict";
 import verdictConfig from "~~/verdict.config";
 
 export const dynamic = "force-dynamic";
