@@ -45,5 +45,11 @@
   },
   "engines": {
     "node": ">=20.18.3"
+  },
+  "resolutions": {
+    "@coinbase/cdp-sdk": "1.44.1"
+  },
+  "overrides": {
+    "@coinbase/cdp-sdk": "1.44.1"
   }
 }
