@@ -227,7 +227,7 @@ const deployedContracts = {
       deployedOnBlock: 41310602,
     },
     Verdict: {
-      address: "0x51c0810324931151bA31db317F23810040e0a250",
+      address: "0x6356954dd331b19F5228F2EdF6029951416C6774",
       abi: [
         {
           inputs: [
@@ -1468,10 +1468,10 @@ const deployedContracts = {
         renounceOwnership: "@openzeppelin/contracts/access/Ownable.sol",
         transferOwnership: "@openzeppelin/contracts/access/Ownable.sol",
       },
-      deployedOnBlock: 41310599,
+      deployedOnBlock: 41311568,
     },
     VerdictRouter: {
-      address: "0x14787283fb39Dc4f2524ec1Bc4c69568137378ae",
+      address: "0xE7fa06DD77F0F514c6313F57b02427734d3B84DB",
       abi: [
         {
           inputs: [
@@ -2013,7 +2013,7 @@ const deployedContracts = {
         sellNo: "contracts/interfaces/IVerdictRouter.sol",
         sellYes: "contracts/interfaces/IVerdictRouter.sol",
       },
-      deployedOnBlock: 41310607,
+      deployedOnBlock: 41311573,
     },
   },
   31337: {
