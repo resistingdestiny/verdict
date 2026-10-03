@@ -190,7 +190,10 @@ contract MockSaucerSwapRouter {
 
     /// @notice Reserves in (input, output) order for a hop between `tokenIn` and `tokenOut`, where
     ///         exactly one side is the WHBAR token placeholder.
-    function _reservesFor(address tokenIn, address tokenOut) internal view returns (uint256 reserveIn, uint256 reserveOut) {
+    function _reservesFor(
+        address tokenIn,
+        address tokenOut
+    ) internal view returns (uint256 reserveIn, uint256 reserveOut) {
         address token = tokenIn == whbar ? tokenOut : tokenIn;
         require(tokenIn == whbar || tokenOut == whbar, "MockSaucerSwapRouter: INVALID_PATH");
         (uint256 reserveToken, uint256 reserveHbar) = _reserves(token);
