@@ -43,7 +43,8 @@ Deployment v2 (the fixed contract) repeated the lifecycle on its market 3 (HBAR 
 | --- | --- |
 | Scheduled execution of `resolveScheduled` on v2, sender is the contract itself | [scheduled transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791047131-574357351), [schedule 0.0.10844890](https://hashscan.io/testnet/schedule/0.0.10844890) |
 | Pool creation and the four trades | see the "Testnet run log" rows for market 3 below |
-| HCS messages on the v2 topic | [topic 0.0.10844607](https://hashscan.io/testnet/topic/0.0.10844607), `market_created` and `market_settled` for market 3 |
+| HCS messages on the v2 topic | [topic 0.0.10844607](https://hashscan.io/testnet/topic/0.0.10844607), `market_created` and `market_settled` for markets 3, 4 and 5 |
+| Scheduled executions for the other two 30-minute markets, both at the first instant of their expiry second | market 4 (Scalar, payout 0.50006916): [transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791047922-812032992); market 5 (Above, payout 0): [transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791048543-013715156) |
 
 Manual resolution and a scalar redemption, on deployment v1 after its schedules deferred (see `docs/SECURITY.md`, "Scheduled run timing"):
 
@@ -60,9 +61,9 @@ The reference deployment holds markets of every kind and in every state, so a fr
 
 | Market | Kind | Expiry | Purpose | Market id |
 | --- | --- | --- | --- | --- |
-| HBAR/USD, strike below spot | Above | 30 minutes after creation | Settles with YES paid in full during the build | v1 market 1 (settled on schedule, see above); v2 copy pending the next HBAR refill |
-| HBAR/USD, strike above spot | Above | 30 minutes after creation | Settles with NO paid in full during the build | v1 market 3 (see deployment v1 rows); v2 copy pending the next HBAR refill |
-| HBAR/USD, range around spot | Scalar | 30 minutes after creation | Settles at a fractional payout during the build | v1 market 4 (see deployment v1 rows); v2 copy pending the next HBAR refill |
+| HBAR/USD, strike below spot | Above | 30 minutes after creation | Settles with YES paid in full during the build | v2 market 3, settled by its schedule at 1.0 HBAR per YES ([scheduled transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791047131-574357351)); also v1 market 1 |
+| HBAR/USD, strike above spot | Above | 30 minutes after creation | Settles with NO paid in full during the build | v2 market 5, settled by its schedule at 0 per YES ([scheduled transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791048543-013715156), [schedule 0.0.10845147](https://hashscan.io/testnet/schedule/0.0.10845147)) |
+| HBAR/USD, range around spot | Scalar | 30 minutes after creation | Settles at a fractional payout during the build | v2 market 4, settled by its schedule at 0.50006916 HBAR per YES ([scheduled transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791047922-812032992), [schedule 0.0.10845035](https://hashscan.io/testnet/schedule/0.0.10845035)); no pool, by choice |
 | BTC/USD, strike 5 percent above spot | Below | 2026-10-09 16:00 UTC | Settles itself in the middle of judging | v2 market 0, [creation](https://hashscan.io/testnet/transaction/0x8945ad9b8d59bf445075013f229a73bb29ce2878df79723b3b3357b122f42eb1) |
 | ETH/USD, range 10 percent around spot | Between | 2026-10-14 16:00 UTC | Settles itself late in judging | v2 market 1, [creation](https://hashscan.io/testnet/transaction/0xcac514cc68448a6d301d1606025619778a20c3cdc873c6bae7d018b71fc2ea15) |
 | HBAR/USD, range 20 percent around spot | Scalar | 2026-10-30 16:00 UTC | Stays open through the announcement | v2 market 2, [creation](https://hashscan.io/testnet/transaction/0x738e8e5725f674c89a1de53ff1f4e8248f4d092dba8a89934bb7c02c46411185) |
