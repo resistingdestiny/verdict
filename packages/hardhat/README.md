@@ -58,7 +58,15 @@ yarn hardhat:verify -- Verdict testnet 0xYourContractAddress
 
 ## The testnet run
 
-`scripts/e2e-testnet.ts` is run by hand and never in CI. It creates a 10-minute market, splits, seeds the pool, makes all four trades, waits for the scheduled resolution, redeems, writes the HCS record and appends every transaction id to `docs/EVIDENCE.md`.
+Run by hand on Hedera testnet and never in CI, from the repo root. These need a funded plain `DEPLOYER_PRIVATE_KEY` in `packages/hardhat/.env`:
+
+```bash
+yarn hardhat:e2e-testnet
+yarn hardhat:reference-deployment
+yarn hardhat:verify-all
+```
+
+`e2e-testnet.ts` creates a 10-minute market, splits, seeds the pool, makes all four trades, waits for the scheduled resolution (with a manual `resolve` fallback), proves collateral untouched across the run, redeems, writes the HCS record and appends every transaction id to `docs/EVIDENCE.md` and the measured costs to `docs/COSTS.md`. It checkpoints to `.testnet-run.json` (git-ignored) and resumes where it stopped. `reference-deployment.ts` creates the six judged reference markets, and `verify-all.ts` verifies all three contracts on Sourcify idempotently.
 
 ## Networks
 

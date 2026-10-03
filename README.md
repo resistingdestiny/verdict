@@ -48,7 +48,7 @@ Environment variables. The app boots and every page renders with none of these s
 
 | Variable | File | Required | Purpose |
 | --- | --- | --- | --- |
-| `DEPLOYER_PRIVATE_KEY` | `packages/hardhat/.env` | One of the two key forms is required to deploy | Plain ECDSA private key for scripted deploys |
+| `DEPLOYER_PRIVATE_KEY` | `packages/hardhat/.env` | One of the two key forms is required to deploy; the hand-run testnet scripts need this plain form | Plain ECDSA private key for scripted deploys |
 | `DEPLOYER_PRIVATE_KEY_ENCRYPTED` | `packages/hardhat/.env` | One of the two key forms is required to deploy | Encrypted key written by the account scripts |
 | `HEDERA_RPC_URL` | `packages/hardhat/.env` | Optional | JSON-RPC relay override; the public testnet relay is the default |
 | `HEDERA_OPERATOR_ID` | `packages/hardhat/.env` and `packages/nextjs/.env.local` | Optional | Account that owns the HCS topic and submits records |
@@ -75,6 +75,8 @@ yarn hardhat:verify -- Verdict testnet
 yarn hardhat:verify -- ChainlinkResolver testnet
 yarn hardhat:verify -- VerdictRouter testnet
 ```
+
+`yarn hardhat:verify-all` verifies all three idempotently from the deployments folder.
 
 Create and seed a first market. The Create page at http://localhost:3000/create walks through it: it shows the live feed price, you pick a kind, bounds and an expiry, it estimates the cost, then it runs create, split, approve and seed in order. From the command line the same steps are three scripts, run from the repo root:
 

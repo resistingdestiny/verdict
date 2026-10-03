@@ -21,8 +21,8 @@ packages/
       libraries/HederaCodes.sol HAPI response codes used at the system contract boundary
     config/addresses.ts         the only file with hard-coded external addresses
     deploy/                     hardhat-deploy scripts; also creates the HCS topic
-    scripts/                    spikes/, create-market, seed-pool, e2e-testnet,
-                                record-sync, agent-trade, evidence
+    scripts/                    spikes/, create-market, seed-pool, trade, e2e-testnet,
+                                reference-deployment, verify-all, record-sync, agent-trade
     test/                       unit tests, helpers/hedera.ts installs the mocks
   nextjs/
     app/                        /, /market/[id], /create, /portfolio, /record,
@@ -78,7 +78,12 @@ yarn hardhat:account
 # Live networks (never mainnet for this template)
 yarn hardhat:deploy --network hederaTestnet
 yarn hardhat:verify -- Verdict testnet [0xAddress]
+yarn hardhat:verify-all               # idempotent Sourcify verification of all three contracts
 yarn record:create-topic              # create the HCS record topic (needs operator env), writes verdict.config.ts
+
+# The testnet run, by hand and never in CI (needs a funded DEPLOYER_PRIVATE_KEY)
+yarn hardhat:e2e-testnet              # full lifecycle with evidence rows into docs/EVIDENCE.md
+yarn hardhat:reference-deployment     # the six judged reference markets, checkpointed
 
 # README script check (CI runs this; every command the docs name must exist in a package.json)
 node scripts/check-readme-scripts.mjs
@@ -86,14 +91,14 @@ node scripts/check-readme-scripts.mjs
 
 `yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the long-running fork.
 
-Operational scripts under `packages/hardhat/scripts/`: `create-market`, `seed-pool`, `trade`, `e2e-testnet`, `record-sync`, `agent-trade`, `evidence`, and throwaway `spikes/`. Run the Hardhat ones from the repo root through the workspace, for example:
+Operational scripts under `packages/hardhat/scripts/`: `create-market`, `seed-pool`, `trade`, `e2e-testnet`, `reference-deployment`, `verify-all`, `record-sync`, `agent-trade`, and throwaway `spikes/`. Run the Hardhat ones from the repo root through the workspace, for example:
 
 ```bash
 yarn workspace @sh/hardhat hardhat run scripts/create-market.ts --network hederaTestnet -- \
   --feed HBAR/USD --kind Above --lower 0.10 --expiry 2026-10-09T16:00:00Z
 ```
 
-`e2e-testnet.ts` is run by hand on Hedera testnet and never in CI; it creates a 10-minute market, splits, seeds the pool, makes all four trades, waits for the scheduled resolution, redeems, writes the HCS record and appends every transaction id to `docs/EVIDENCE.md`.
+The testnet run has its own root scripts: `yarn hardhat:e2e-testnet` creates a 10-minute market, splits, seeds the pool, makes all four trades, waits for the scheduled resolution (with a manual `resolve` fallback), proves collateral untouched across the run, redeems, writes the HCS record and appends every transaction id to `docs/EVIDENCE.md` and the measured costs to `docs/COSTS.md`. It is resumable from `packages/hardhat/.testnet-run.json` (git-ignored), run by hand and never in CI. `yarn hardhat:reference-deployment` creates the six judged reference markets with a 150 HBAR deployer floor, and `yarn hardhat:verify-all` verifies the deployed contracts on Sourcify idempotently.
 
 ## The invariants, as rules that must never break
 
