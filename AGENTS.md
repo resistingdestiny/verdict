@@ -84,7 +84,14 @@ node scripts/check-readme-scripts.mjs
 
 `yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the long-running fork.
 
-Operational scripts under `packages/hardhat/scripts/`: `create-market`, `seed-pool`, `e2e-testnet`, `record-sync`, `agent-trade`, `evidence`, and throwaway `spikes/`. `e2e-testnet.ts` is run by hand on Hedera testnet and never in CI; it creates a 10-minute market, splits, seeds the pool, makes all four trades, waits for the scheduled resolution, redeems, writes the HCS record and appends every transaction id to `docs/EVIDENCE.md`.
+Operational scripts under `packages/hardhat/scripts/`: `create-market`, `seed-pool`, `trade`, `e2e-testnet`, `record-sync`, `agent-trade`, `evidence`, and throwaway `spikes/`. Run the Hardhat ones from the repo root through the workspace, for example:
+
+```bash
+yarn workspace @sh/hardhat hardhat run scripts/create-market.ts --network hederaTestnet -- \
+  --feed HBAR/USD --kind Above --lower 0.10 --expiry 2026-10-09T16:00:00Z
+```
+
+`e2e-testnet.ts` is run by hand on Hedera testnet and never in CI; it creates a 10-minute market, splits, seeds the pool, makes all four trades, waits for the scheduled resolution, redeems, writes the HCS record and appends every transaction id to `docs/EVIDENCE.md`.
 
 ## The invariants, as rules that must never break
 
@@ -121,7 +128,11 @@ Five touches, all mechanical. The full walkthrough is `docs/TUTORIAL.md`.
 
 - `GET /api/markets` and `GET /api/markets/[id]` return market terms, status and odds as JSON. `GET /api/quote` returns a quote for any of the four trades, net of pool fees.
 - `/llms.txt` is a plain-text description of the app, the contracts and the API, written for agents.
-- `packages/hardhat/scripts/agent-trade.ts` is the example: it reads `/api/markets`, picks a market, takes a quote and buys through the router with a key from the environment.
+- `packages/hardhat/scripts/agent-trade.ts` is the example: it reads `/api/markets`, picks a market, takes a quote and buys through the router with `DEPLOYER_PRIVATE_KEY` from the environment. It expects the app serving the API at `VERDICT_APP_URL` (default `http://localhost:3000`), so start it with `yarn next:start` first, then run:
+
+```bash
+yarn workspace @sh/hardhat ts-node scripts/agent-trade.ts 1
+```
 
 ## Checks before calling work finished
 

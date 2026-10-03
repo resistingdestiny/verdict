@@ -76,7 +76,20 @@ yarn hardhat:verify -- ChainlinkResolver testnet
 yarn hardhat:verify -- VerdictRouter testnet
 ```
 
-Create and seed a first market. The Create page at http://localhost:3000/create walks through it: it shows the live feed price, you pick a kind, bounds and an expiry, it estimates the cost, then it runs create, split, approve and seed in order. The same steps are available from the command line through the `create-market` and `seed-pool` scripts under `packages/hardhat/scripts`. Two things to know before seeding: `createMarket` charges the two HTS token creation fees plus a resolution reserve and refunds the rest, and seeding the pool leaves the creator holding the NO leg, which is itself a position.
+Create and seed a first market. The Create page at http://localhost:3000/create walks through it: it shows the live feed price, you pick a kind, bounds and an expiry, it estimates the cost, then it runs create, split, approve and seed in order. From the command line the same steps are three scripts, run from the repo root:
+
+```bash
+yarn workspace @sh/hardhat hardhat run scripts/create-market.ts --network hederaTestnet -- \
+  --feed HBAR/USD --kind Above --lower 0.10 --expiry 2026-10-09T16:00:00Z
+
+yarn workspace @sh/hardhat hardhat run scripts/seed-pool.ts --network hederaTestnet -- \
+  --id 0 --split 20 --liquidity 10
+
+yarn workspace @sh/hardhat hardhat run scripts/trade.ts --network hederaTestnet -- \
+  --id 0 --trade buyYes --amount 1
+```
+
+`create-market` prints the market id, the YES and NO tokens and the resolution schedule, with HashScan links; use that id for `--id`. Bounds are human units, converted with the feed's decimals. `seed-pool` splits `--split` HBAR, seeds the pool with that many whole YES against `--liquidity` HBAR and pays the pool creation fee. `trade` runs any of the four trades with a 2 percent slippage bound. Two things to know before seeding: `createMarket` charges the two HTS token creation fees plus a resolution reserve and refunds the rest, and seeding the pool leaves the creator holding the NO leg, which is itself a position.
 
 ## How it works
 
