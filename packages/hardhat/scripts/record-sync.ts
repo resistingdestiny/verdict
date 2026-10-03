@@ -246,7 +246,9 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   try {
     data = JSON.parse(text) as T & { error?: string };
   } catch {
-    throw new Error(`${url} did not return JSON (status ${res.status}). Is the Verdict app running at VERDICT_APP_URL?`);
+    throw new Error(
+      `${url} did not return JSON (status ${res.status}). Is the Verdict app running at VERDICT_APP_URL?`,
+    );
   }
   if (!res.ok) throw new Error(`${url} answered ${res.status}: ${data.error ?? res.statusText}`);
   return data;
