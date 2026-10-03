@@ -37,7 +37,14 @@ Market 1 of deployment v1 (HBAR / USD Above, 10 minutes, created 2026-10-03 16:0
 | Redemption in a binary market (YES at 1 HBAR, NO at 0) | [transaction](https://hashscan.io/testnet/transaction/0x080c12a9564a24d9e33d2a3730e2a1ce2c8a4bd94015c1b912331599de690143) |
 | HCS messages for creation and settlement | [topic 0.0.10844224](https://hashscan.io/testnet/topic/0.0.10844224), messages 2 (`market_created`) and 4 (`market_settled`) |
 
-A redemption in a scalar market is added once a scalar market has settled (deployment v2 market 2 settles on 30 October 2026).
+Manual resolution and a scalar redemption, on deployment v1 after its schedules deferred (see `docs/SECURITY.md`, "Scheduled run timing"):
+
+| Step | HashScan |
+| --- | --- |
+| `resolve` called by an account on market 4 (Scalar), the fallback when a schedule did not settle | [transaction](https://hashscan.io/testnet/transaction/0xb277b5bdc44fe603ac9986555b14490fe5da7b591cdc2c1678e13c3e675a9b56) |
+| Liquidity removed from market 4's pool | [transaction](https://hashscan.io/testnet/transaction/0x6bc6583710294e31f2fb15a713b9eed2ceec69a5562220e6b8672ecc4a897757) |
+| Redemption in a scalar market at a payout of 0.5 HBAR per YES | [transaction](https://hashscan.io/testnet/transaction/0x1eb0213e9a4600abd1bfde3321b7219fd1e69617537109123cf8167c0e386aad) |
+| Redemption in a binary market with NO paid in full (market 3) | [transaction](https://hashscan.io/testnet/transaction/0x1d32ad4e030053655c8760d2e03a3874b7ff133d3cb8f41136dd48253e58b5f3) |
 
 ## Reference markets
 
