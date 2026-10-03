@@ -5,8 +5,9 @@ pragma solidity ^0.8.28;
 /// @notice Outcome markets on Hedera. A question about a price becomes two HTS tokens, YES and NO,
 ///         whose payouts always add up to 1 HBAR. Every market settles on one number, the YES payout,
 ///         stored as tinybars paid per whole YES token (0 to 100,000,000).
-/// @dev Frozen interface. All amounts are tinybars (8 decimals). Outcome tokens have 8 decimals, so one
-///      whole token is 1e8 units and 1 unit of YES plus 1 unit of NO is backed by exactly 1 tinybar.
+/// @dev Frozen interface, except for appending `Kind` values, which is how a market kind is added. All amounts
+///      are tinybars (8 decimals). Outcome tokens have 8 decimals, so one whole token is 1e8 units and 1 unit
+///      of YES plus 1 unit of NO is backed by exactly 1 tinybar.
 interface IVerdict {
     /// @notice The four market kinds. Adding a kind is one enum value, one payoff branch and one test table.
     enum Kind {
@@ -66,14 +67,7 @@ interface IVerdict {
     event ScheduleFailed(uint256 indexed id, int64 code);
     event Split(uint256 indexed id, address indexed from, uint256 amount, address yesTo, address noTo);
     event Merged(uint256 indexed id, address indexed from, uint256 amount, address to);
-    event Resolved(
-        uint256 indexed id,
-        uint64 payout,
-        int256 answer,
-        uint80 roundId,
-        uint64 updatedAt,
-        bool bySchedule
-    );
+    event Resolved(uint256 indexed id, uint64 payout, int256 answer, uint80 roundId, uint64 updatedAt, bool bySchedule);
     event ResolveDeferred(uint256 indexed id, string reason);
     event Voided(uint256 indexed id, address indexed by);
     event Redeemed(
