@@ -94,3 +94,56 @@ Three consecutive unattended rolls, if the series ships.
 | HCS topic 0.0.10844224 | [link](https://hashscan.io/testnet/topic/0.0.10844224) | no transaction | 2026-10-03 |
 | HCS record sync for market 1 | [link](https://hashscan.io/testnet/topic/0.0.10844224) | no transaction | 2026-10-03 |
 | HCS message market_created for market 1 | [link](https://hashscan.io/testnet/transaction/0.0.10348741@1791044702.829460237) | 0.0.10348741@1791044702.829460237 | 2026-10-03 |
+| Create market: HBAR / USD Above, strike 5 percent below spot, 30 minutes | [link](https://hashscan.io/testnet/transaction/0x4160a46bdf4b63ac21b71e25ae575a5a98303b00a7b5dc9ea7a21645ff0d5ded) | 0.0.7314364@1791044737.022425062 | 2026-10-03 |
+| Market 2 YES token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000a57929) | no transaction | 2026-10-03 |
+| Market 2 NO token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000a5792A) | no transaction | 2026-10-03 |
+| Market 2 schedule entity 0.0.10844459 | [link](https://hashscan.io/testnet/schedule/0.0.10844459) | no transaction | 2026-10-03 |
+| Market 2 split 20.0 HBAR | [link](https://hashscan.io/testnet/transaction/0xf05a1287767f28fb921ed114bb5db3d07e593b2063396310971e503d9edd6762) | 0.0.7314364@1791044741.814252610 | 2026-10-03 |
+| Market 2 approve SaucerSwap router on YES | [link](https://hashscan.io/testnet/transaction/0xf1050b8bf0a286485c3ebea8f63291b1626486d3430237711efb564519365f50) | 0.0.7314364@1791044752.594581585 | 2026-10-03 |
+| Market 2 pool creation and seed | [link](https://hashscan.io/testnet/transaction/0xc679d2dfe3629375e7013b90febe4dff9a9c524beef92a0f9c81a1bac5d91cc2) | 0.0.7314364@1791044757.114092948 | 2026-10-03 |
+| Create market: HBAR / USD Above, strike 5 percent above spot, 30 minutes | [link](https://hashscan.io/testnet/transaction/0xaba5d838d6dbe949b5a2dfa0b624b7fa3b88053b0a5e053a55c6c94ad376a985) | 0.0.7314364@1791044765.277970124 | 2026-10-03 |
+| Market 3 YES token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000A57933) | no transaction | 2026-10-03 |
+| Market 3 NO token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000A57934) | no transaction | 2026-10-03 |
+| Market 3 schedule entity 0.0.10844469 | [link](https://hashscan.io/testnet/schedule/0.0.10844469) | no transaction | 2026-10-03 |
+| Market 3 split 20.0 HBAR | [link](https://hashscan.io/testnet/transaction/0x933e9a68e6bc7d912920bc3336cf72279db21b1ae3dd9baa3c2f307dbd80d57b) | 0.0.7314364@1791044771.593920970 | 2026-10-03 |
+| Market 3 approve SaucerSwap router on YES | [link](https://hashscan.io/testnet/transaction/0x31db4bd885627b89e59bc34db6cce31d6e8e6b7404fd3da245ba486209589696) | 0.0.7314364@1791044778.737206501 | 2026-10-03 |
+| Market 3 pool creation and seed | [link](https://hashscan.io/testnet/transaction/0xbf9aa5f41758e7f68d0c736b3ee16750ce60af458130acddfa68363c069f28c1) | 0.0.7314364@1791044783.647081398 | 2026-10-03 |
+| Create market: HBAR / USD Scalar, range 20 percent around spot, 30 minutes | [link](https://hashscan.io/testnet/transaction/0x1e87a26b4541d3562a96b8880477ba6968edc41bca5b2940d6978fb712f17b54) | 0.0.7314364@1791044788.428623463 | 2026-10-03 |
+| Market 4 YES token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000A5793a) | no transaction | 2026-10-03 |
+| Market 4 NO token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000A5793b) | no transaction | 2026-10-03 |
+| Market 4 schedule entity 0.0.10844476 | [link](https://hashscan.io/testnet/schedule/0.0.10844476) | no transaction | 2026-10-03 |
+| Market 4 split 20.0 HBAR | [link](https://hashscan.io/testnet/transaction/0x23063c9577c1c870822e706ac01f33ccf581f554bab1949569ec0cffbd4ac94f) | 0.0.7314364@1791044798.697169929 | 2026-10-03 |
+| Market 4 approve SaucerSwap router on YES | [link](https://hashscan.io/testnet/transaction/0x2e7c81e7fb9cf51b072099e308d95e45f57ada3d5c34b8731d79c99210049bbe) | 0.0.7314364@1791044803.781161670 | 2026-10-03 |
+| Market 4 pool creation and seed | [link](https://hashscan.io/testnet/transaction/0xd34ee53bcf2faba59088fcd993b68dfa53b9c3e89e6ac24e57809e26ed3afe2d) | 0.0.7314364@1791044810.684361182 | 2026-10-03 |
+| Create market: BTC / USD Below, strike 5 percent above spot, 2026-10-09T16:00:00Z | [link](https://hashscan.io/testnet/transaction/0x453a0e85306ea9edb9b1d1dd8befb750d94f3881052dffd607b7fc010f9371cf) | 0.0.7314364@1791044815.641284084 | 2026-10-03 |
+| Market 5 YES token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000a57941) | no transaction | 2026-10-03 |
+| Market 5 NO token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000a57942) | no transaction | 2026-10-03 |
+| Market 5 schedule entity 0.0.10844483 | [link](https://hashscan.io/testnet/schedule/0.0.10844483) | no transaction | 2026-10-03 |
+| Market 5 split 20.0 HBAR | [link](https://hashscan.io/testnet/transaction/0xddab47be414cfccb6e083860ad6c939467cfdfdbfd7e2aa4dc9755bd07222e48) | 0.0.7314364@1791044821.407410578 | 2026-10-03 |
+| Market 5 approve SaucerSwap router on YES | [link](https://hashscan.io/testnet/transaction/0x0fc43ff3ad24f4c7cd91f409804d937e3f8e3c27241a1b9590d577f976c969f8) | 0.0.7314364@1791044829.054239250 | 2026-10-03 |
+| Market 5 pool creation and seed | [link](https://hashscan.io/testnet/transaction/0x9ad77e5294e9cda2ff6eb7612058ee6b430f4510cbb2217ef19e053f878fae03) | 0.0.7314364@1791044836.660562353 | 2026-10-03 |
+| Create market: ETH / USD Between, range 10 percent around spot, 2026-10-14T16:00:00Z | [link](https://hashscan.io/testnet/transaction/0x899bd71b8e3c8c240538f756fc15daee720853a77d6be4a670bb028f2e50df5e) | 0.0.7314364@1791044845.026120953 | 2026-10-03 |
+| Market 6 YES token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000a57949) | no transaction | 2026-10-03 |
+| Market 6 NO token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000a5794a) | no transaction | 2026-10-03 |
+| Market 6 schedule entity 0.0.10844491 | [link](https://hashscan.io/testnet/schedule/0.0.10844491) | no transaction | 2026-10-03 |
+| Market 6 split 20.0 HBAR | [link](https://hashscan.io/testnet/transaction/0x6335194f638b6a3ad6fadca561eaa62676357b0153dcbd3095ed88ca6c68353f) | 0.0.7314364@1791044850.451825518 | 2026-10-03 |
+| Market 6 approve SaucerSwap router on YES | [link](https://hashscan.io/testnet/transaction/0xd84b4b8c2caecf9a2153296cf6d63f10866fe89af4f2176ba6e1aa4277dbae0a) | 0.0.7314364@1791044856.397389788 | 2026-10-03 |
+| Market 6 pool creation and seed | [link](https://hashscan.io/testnet/transaction/0x0386a63c1311a6ff699c125924daecea1f59276ee339af2ca1aac39d5ebc9676) | 0.0.7314364@1791044861.935857276 | 2026-10-03 |
+| Create market: HBAR / USD Scalar, range 20 percent around spot, 2026-10-30T16:00:00Z | [link](https://hashscan.io/testnet/transaction/0xfbf923ffe1554362e10fb5a920a74358432c0eba53450cedf77527da840419fd) | 0.0.7314364@1791044869.419938745 | 2026-10-03 |
+| Market 7 YES token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000A57952) | no transaction | 2026-10-03 |
+| Market 7 NO token | [link](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000a57953) | no transaction | 2026-10-03 |
+| Market 7 schedule entity 0.0.10844500 | [link](https://hashscan.io/testnet/schedule/0.0.10844500) | no transaction | 2026-10-03 |
+| Market 7 split 20.0 HBAR | [link](https://hashscan.io/testnet/transaction/0xf6a882322c88239abc33db373004fc85471ba235677988096c0716a0855f250a) | 0.0.7314364@1791044878.252720207 | 2026-10-03 |
+| Market 7 approve SaucerSwap router on YES | [link](https://hashscan.io/testnet/transaction/0x87d6fc6d08fa320d6a6444bc767d6f37165c86c6df70606f7dfc5ee58e69b36a) | 0.0.7314364@1791044882.736699164 | 2026-10-03 |
+| Market 7 pool creation and seed | [link](https://hashscan.io/testnet/transaction/0x51ecde0a4a11801ad17246b8a15e1f2076620867ed6cec3b4068f23f85518acf) | 0.0.7314364@1791044890.684807279 | 2026-10-03 |
+
+## Reference markets created
+
+| Market | Kind | Expiry | Market id | Pool | Purpose |
+| --- | --- | --- | --- | --- | --- |
+| HBAR / USD Above, strike 5 percent below spot, 30 minutes | Above | 2026-10-03T16:56:12.000Z | 2 | [pool](https://hashscan.io/testnet/contract/0xce1dD89210be1fE61172A3bf544527c1782BDe5C) | Settles with YES paid in full during the build |
+| HBAR / USD Above, strike 5 percent above spot, 30 minutes | Above | 2026-10-03T16:56:39.000Z | 3 | [pool](https://hashscan.io/testnet/contract/0xC016A8babdd6F9951AbFdDA1226058B2CeA00382) | Settles with NO paid in full during the build |
+| HBAR / USD Scalar, range 20 percent around spot, 30 minutes | Scalar | 2026-10-03T16:57:05.000Z | 4 | [pool](https://hashscan.io/testnet/contract/0x70B2cF42e13bd8d9f7C729B3A2f276af61d33e2A) | Settles at a fractional payout during the build |
+| BTC / USD Below, strike 5 percent above spot, 2026-10-09T16:00:00Z | Below | 2026-10-09T16:00:00.000Z | 5 | [pool](https://hashscan.io/testnet/contract/0x36f6cDa3d205889c54273F68E5788B139a948A5c) | Settles itself in the middle of judging |
+| ETH / USD Between, range 10 percent around spot, 2026-10-14T16:00:00Z | Between | 2026-10-14T16:00:00.000Z | 6 | [pool](https://hashscan.io/testnet/contract/0xee5f0980029aE56bc2b8a0C2a7842DE31dE32f2f) | Settles itself late in judging |
+| HBAR / USD Scalar, range 20 percent around spot, 2026-10-30T16:00:00Z | Scalar | 2026-10-30T16:00:00.000Z | 7 | [pool](https://hashscan.io/testnet/contract/0xAad299479440083F1a467f57c19Cb1F80682BFc7) | Stays open through the announcement |

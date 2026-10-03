@@ -193,14 +193,15 @@ async function buildMarketCreated(id: bigint, market: MarketView, verdictAddress
     feed = null;
   }
   const txHash = await findEventHash(verdictAddress, MARKET_CREATED_SIG, id);
-  const usesUpper = market.kind === 2 || market.kind === 3;
+  const kind = Number(market.kind);
+  const usesUpper = kind === 2 || kind === 3;
   return {
     v: 1,
     type: "market_created",
     market: Number(id),
     contract: await evmToContractId(verdictAddress, { baseUrl: MIRROR_BASE_URL }),
     feed,
-    kind: KIND_NAMES[market.kind] ?? `Unknown(${market.kind})`,
+    kind: KIND_NAMES[kind] ?? `Unknown(${kind})`,
     lower: ethers.formatUnits(market.lower, market.decimals),
     upper: usesUpper ? ethers.formatUnits(market.upper, market.decimals) : null,
     expiry: isoSeconds(market.expiry),
@@ -296,7 +297,12 @@ async function syncDirect(topicId: string, operatorId: string, operatorKey: stri
     for (let i = 0n; i < count; i++) {
       const market = (await verdict.getMarket(i)) as unknown as MarketView;
       const pending: RecordMessage[] = [];
-      if (!keys.has(`market_created:${i}`)) pending.push(await buildMarketCreated(i, market, verdictAddress));
+      // RECORD_RESEND=4,6 appends a fresh market_created for those ids (an append-only topic cannot edit a
+      // message; readers take the latest message per type and market).
+      const resend = (process.env.RECORD_RESEND ?? "").split(",").filter(Boolean).map(BigInt);
+      if (!keys.has(`market_created:${i}`) || resend.includes(i)) {
+        pending.push(await buildMarketCreated(i, market, verdictAddress));
+      }
       if ((Number(market.status) === 1 || Number(market.status) === 2) && !keys.has(`market_settled:${i}`)) {
         pending.push(await buildMarketSettled(i, market, verdictAddress));
       }

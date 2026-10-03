@@ -57,3 +57,27 @@ Measured HBAR and gas for every step of the market lifecycle on Hedera testnet. 
 | Approve Verdict on YES for redeem | 727,184 | 0.60356272 (2 records) | 0.0.7314364@1791044378.144902074 |
 | Approve Verdict on NO for redeem | 727,172 | 0.60355276 (2 records) | 0.0.7314364@1791044384.605756329 |
 | Redeem 78154747 YES and 2000000000 NO on market 1 | 122,946 | 0.10204518 (5 records) | 0.0.7314364@1791044389.614332537 |
+| Create market: HBAR / USD Above, strike 5 percent below spot, 30 minutes | 1,954,952 | 24.91862608 (4 records) | 0.0.7314364@1791044737.022425062 |
+| Market 2 split 20.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791044741.814252610 |
+| Market 2 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791044752.594581585 |
+| Market 2 pool creation and seed | 6,787,867 | 17.28193757 (20 records) | 0.0.7314364@1791044757.114092948 |
+| Create market: HBAR / USD Above, strike 5 percent above spot, 30 minutes | 1,954,952 | 24.91862608 (4 records) | 0.0.7314364@1791044765.277970124 |
+| Market 3 split 20.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791044771.593920970 |
+| Market 3 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791044778.737206501 |
+| Market 3 pool creation and seed | 6,787,867 | 17.28193757 (20 records) | 0.0.7314364@1791044783.647081398 |
+| Create market: HBAR / USD Scalar, range 20 percent around spot, 30 minutes | 1,975,033 | 24.93529331 (4 records) | 0.0.7314364@1791044788.428623463 |
+| Market 4 split 20.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791044798.697169929 |
+| Market 4 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791044803.781161670 |
+| Market 4 pool creation and seed | 6,787,867 | 17.28193757 (20 records) | 0.0.7314364@1791044810.684361182 |
+| Create market: BTC / USD Below, strike 5 percent above spot, 2026-10-09T16:00:00Z | 1,955,000 | 24.91866592 (4 records) | 0.0.7314364@1791044815.641284084 |
+| Market 5 split 20.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791044821.407410578 |
+| Market 5 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791044829.054239250 |
+| Market 5 pool creation and seed | 6,787,867 | 17.28193757 (20 records) | 0.0.7314364@1791044836.660562353 |
+| Create market: ETH / USD Between, range 10 percent around spot, 2026-10-14T16:00:00Z | 1,975,032 | 24.93529248 (4 records) | 0.0.7314364@1791044845.026120953 |
+| Market 6 split 20.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791044850.451825518 |
+| Market 6 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791044856.397389788 |
+| Market 6 pool creation and seed | 6,787,867 | 17.28193757 (20 records) | 0.0.7314364@1791044861.935857276 |
+| Create market: HBAR / USD Scalar, range 20 percent around spot, 2026-10-30T16:00:00Z | 1,975,021 | 24.93528335 (4 records) | 0.0.7314364@1791044869.419938745 |
+| Market 7 split 20.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791044878.252720207 |
+| Market 7 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791044882.736699164 |
+| Market 7 pool creation and seed | 6,787,867 | 17.28193757 (20 records) | 0.0.7314364@1791044890.684807279 |
