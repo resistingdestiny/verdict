@@ -263,7 +263,7 @@ describe("VerdictRouter", function () {
       const [needed] = await router.quoteSellNo(marketId, noIn);
       const extra = 30_000_000n; // 0.3 HBAR above the quote
       await approveHts(user, await no.getAddress(), routerAddress, noIn);
-      const tx = router.connect(user).sellNo(marketId, noIn, noIn, deadline, { value: needed + extra });
+      const tx = router.connect(user).sellNo(marketId, noIn, noIn - needed, deadline, { value: needed + extra });
       // The user sends needed + extra and gets noIn + extra back, so the balance moves by noIn - needed.
       await expect(tx).to.changeEtherBalance(user, noIn - needed);
       await expect(tx).to.emit(router, "Traded").withArgs(marketId, userAddress, TRADE.SellNo, noIn, noIn, extra);
@@ -279,12 +279,37 @@ describe("VerdictRouter", function () {
         .withArgs(needed, needed - 1n);
     });
 
-    it("reverts Slippage when minHbarOut exceeds the payout", async function () {
-      const [needed] = await router.quoteSellNo(marketId, noIn);
+    it("reverts Slippage when minHbarOut exceeds the net, and the refund never counts towards it", async function () {
+      const [needed, net] = await router.quoteSellNo(marketId, noIn);
+      expect(net).to.equal(noIn - needed);
       await approveHts(user, await no.getAddress(), routerAddress, noIn);
+      await expect(router.connect(user).sellNo(marketId, noIn, net + 1n, deadline, { value: needed }))
+        .to.be.revertedWithCustomError(router, "Slippage")
+        .withArgs(net + 1n, net);
+      // Sending more HBAR than needed does not lift the net: the extra comes back as refund, not as proceeds.
       await expect(
-        router.connect(user).sellNo(marketId, noIn, noIn + 1n, deadline, { value: needed }),
+        router.connect(user).sellNo(marketId, noIn, net + 1n, deadline, { value: needed + ONE_HBAR }),
       ).to.be.revertedWithCustomError(router, "Slippage");
+    });
+
+    it("the net bound fires when the pool moves against the seller between quote and trade (review L4)", async function () {
+      const [needed, net] = await router.quoteSellNo(marketId, noIn);
+      await approveHts(user, await no.getAddress(), routerAddress, noIn);
+      // Someone buys a little YES, so the matching YES now costs more and the seller's net shrinks.
+      await associate(seeder, await yes.getAddress());
+      await router.connect(seeder).buyYes(marketId, 0n, deadline, { value: ONE_HBAR / 100n });
+      const [neededAfter, netAfter] = await router.quoteSellNo(marketId, noIn);
+      expect(neededAfter).to.be.gt(needed);
+      expect(netAfter).to.be.lt(net);
+      await expect(router.connect(user).sellNo(marketId, noIn, net, deadline, { value: neededAfter }))
+        .to.be.revertedWithCustomError(router, "Slippage")
+        .withArgs(net, netAfter);
+      // A one percent allowance on the quoted net lets a small move through and still pays noIn plus refund.
+      const bound = (net * 99n) / 100n;
+      expect(netAfter).to.be.gte(bound);
+      await expect(
+        router.connect(user).sellNo(marketId, noIn, bound, deadline, { value: neededAfter + 1n }),
+      ).to.changeEtherBalance(user, noIn - neededAfter);
     });
 
     it("reverts Expired after the deadline", async function () {
@@ -366,7 +391,7 @@ describe("VerdictRouter", function () {
       expect(hbarBack).to.equal((ONE_HBAR * 997n * SEED_HBAR) / (SEED_YES * 1000n + ONE_HBAR * 997n));
       const [needed, sellNoOut] = await router.quoteSellNo(marketId, ONE_HBAR);
       expect(needed).to.equal((SEED_HBAR * ONE_HBAR * 1000n) / ((SEED_YES - ONE_HBAR) * 997n) + 1n);
-      expect(sellNoOut).to.equal(ONE_HBAR);
+      expect(sellNoOut, "net of the YES purchase").to.equal(ONE_HBAR - needed);
     });
   });
 });

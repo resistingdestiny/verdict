@@ -56,6 +56,8 @@ interface IVerdictRouter {
 
     /// @notice Buy `noIn` YES in the pool with the HBAR sent, merge the pairs and pay out `noIn` HBAR plus any HBAR not spent.
     /// @dev Needs an allowance on NO for the router. `msg.value` must cover the YES purchase; the rest is refunded.
+    ///      `minHbarOut` bounds the net: `noIn` less the HBAR spent on the YES, as `quoteSellNo` reports it.
+    /// @return hbarOut HBAR paid to the caller: `noIn` plus the unspent part of `msg.value`.
     function sellNo(
         uint256 id,
         uint256 noIn,
@@ -84,6 +86,7 @@ interface IVerdictRouter {
     /// @notice For `hbarIn`: NO received and HBAR returned from selling the YES leg.
     function quoteBuyNo(uint256 id, uint256 hbarIn) external view returns (uint256 noOut, uint256 hbarBack);
 
-    /// @notice For `noIn`: HBAR the caller must send to buy the matching YES, and the net HBAR received.
+    /// @notice For `noIn`: HBAR the caller must send to buy the matching YES, and the net HBAR received, which is
+    ///         `noIn` less that cost (zero when the YES costs more than the NO is worth).
     function quoteSellNo(uint256 id, uint256 noIn) external view returns (uint256 hbarNeeded, uint256 hbarOut);
 }

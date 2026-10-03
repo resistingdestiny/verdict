@@ -40,7 +40,7 @@ export async function GET() {
     "- buyYes: send HBAR, receive YES from the pool.",
     "- sellYes: send YES (approve the router first), receive HBAR.",
     "- buyNo: send HBAR, receive NO equal to the HBAR sent plus HBAR back from selling the YES leg.",
-    "- sellNo: send NO and enough HBAR to buy the matching YES, receive NO-worth of HBAR plus change.",
+    "- sellNo: send NO and enough HBAR to buy the matching YES, receive NO-worth of HBAR plus change; the quote and the slippage bound are the net, NO-worth less the YES cost.",
     "",
     "## JSON API",
     "",

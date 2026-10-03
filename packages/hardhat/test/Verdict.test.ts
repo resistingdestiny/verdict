@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { now, ONE_HBAR, setNextTime, setTime } from "./helpers/hedera";
+import { now, ONE_HBAR, setBalance, setNextTime, setTime } from "./helpers/hedera";
 import {
   approveBoth,
   createMarket,
@@ -20,6 +20,8 @@ import {
 } from "./helpers/verdict";
 
 const HALF = ONE_HBAR / 2n;
+const INT128_MAX = (1n << 127n) - 1n;
+const INT128_MIN = -(1n << 127n);
 const CODE_INVALID_SIGNATURE = 7n;
 const CODE_INSUFFICIENT_TX_FEE = 9n;
 const CODE_INSUFFICIENT_TOKEN_BALANCE = 178n;
@@ -121,7 +123,7 @@ describe("Verdict", function () {
       const scheduled = await hss.scheduleAt(m.schedule);
       expect(scheduled.to).to.equal(verdictAddress);
       expect(scheduled.payer).to.equal(verdictAddress);
-      expect(scheduled.expirySecond).to.equal(expiry);
+      expect(scheduled.expirySecond, "the run is scheduled for the second after expiry").to.equal(expiry + 1n);
       expect(scheduled.gasLimit).to.equal(2_000_000n);
       expect(scheduled.callData).to.equal(verdict.interface.encodeFunctionData("resolveScheduled", [0]));
       expect(await verdict.pendingReserves()).to.equal(RESERVE);
@@ -151,6 +153,32 @@ describe("Verdict", function () {
       ).to.changeEtherBalances([alice, verdict, hts], [-(2n * ONE_HBAR + RESERVE), RESERVE, 2n * ONE_HBAR]);
       expect(await verdict.pendingReserves()).to.equal(3n * RESERVE);
       await expectInvariants(ctx, [0n, 1n, 2n]);
+    });
+
+    it("measures the charge across token creation and scheduling and checks it against msg.value (review L3)", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, hts, owner, alice, resolver, feedId } = ctx;
+      const expiry = (await now()) + HOUR;
+      // A high HTS fee that the token creation value exactly covers: the whole value is consumed, the
+      // creator is charged exactly creationCost and nothing comes back.
+      await verdict.connect(owner).setTokenCreateValue(3n * ONE_HBAR);
+      await hts.setCreateFee(3n * ONE_HBAR);
+      const cost = await verdict.creationCost();
+      expect(cost).to.equal(6n * ONE_HBAR + RESERVE);
+      await expect(
+        verdict.connect(alice).createMarket(resolver, feedId, Kind.Above, 1n, 0n, expiry, { value: cost }),
+      ).to.changeEtherBalances([alice, verdict, hts], [-cost, RESERVE, 6n * ONE_HBAR]);
+      // A fee above the value sent with each creation is refused by HTS itself (code 9) before any charge.
+      await hts.setCreateFee(3n * ONE_HBAR + 1n);
+      await expect(
+        verdict.connect(alice).createMarket(resolver, feedId, Kind.Above, 1n, 0n, expiry, { value: 2n * cost }),
+      )
+        .to.be.revertedWithCustomError(verdict, "HtsError")
+        .withArgs(CODE_INSUFFICIENT_TX_FEE);
+      // Nothing in the mocks can take more HBAR than the value sent with each call, so the measured charge
+      // can never exceed msg.value here. On Hedera it can if HSS charges the payer at scheduling time,
+      // which is the case the InsufficientValue check after the measurement guards.
+      await expectInvariants(ctx, [0n]);
     });
 
     it("reverts InsufficientValue below creationCost and ResolverNotAllowed for a stranger resolver", async function () {
@@ -213,6 +241,28 @@ describe("Verdict", function () {
       expect((await verdict.getMarket(above.id)).upper).to.equal(0n);
       expect((await verdict.getMarket(below.id)).upper).to.equal(0n);
       expect((await verdict.getMarket(between.id)).upper).to.equal(101n);
+    });
+
+    it("keeps every bound within int128 so a Scalar payout can never overflow (review L1)", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, alice, resolver, feedId, creationCost } = ctx;
+      const expiry = (await now()) + HOUR;
+      const create = (kind: Kind, lower: bigint, upper: bigint) =>
+        verdict.connect(alice).createMarket(resolver, feedId, kind, lower, upper, expiry, { value: creationCost });
+      // Beyond int128 the interpolation panics, which is what the bound check prevents from ever being stored.
+      await expect(verdict.payoutFor(Kind.Scalar, -(10n ** 70n), 10n ** 70n, ONE_HBAR)).to.be.revertedWithPanic(0x11);
+      await expect(create(Kind.Scalar, INT128_MIN - 1n, 0n)).to.be.revertedWithCustomError(verdict, "InvalidBounds");
+      await expect(create(Kind.Scalar, 0n, INT128_MAX + 1n)).to.be.revertedWithCustomError(verdict, "InvalidBounds");
+      await expect(create(Kind.Between, 0n, INT128_MAX + 1n)).to.be.revertedWithCustomError(verdict, "InvalidBounds");
+      await expect(create(Kind.Above, INT128_MAX + 1n, 0n)).to.be.revertedWithCustomError(verdict, "InvalidBounds");
+      await expect(create(Kind.Below, INT128_MIN - 1n, 0n)).to.be.revertedWithCustomError(verdict, "InvalidBounds");
+      // The widest allowed Scalar interpolates without overflow at both ends and in the middle.
+      const { id } = await createMarket(ctx, { kind: Kind.Scalar, lower: INT128_MIN, upper: INT128_MAX });
+      expect((await verdict.getMarket(id)).lower).to.equal(INT128_MIN);
+      expect(await verdict.payoutFor(Kind.Scalar, INT128_MIN, INT128_MAX, 0n)).to.equal(HALF);
+      expect(await verdict.payoutFor(Kind.Scalar, INT128_MIN, INT128_MAX, INT128_MIN + 1n)).to.equal(0n);
+      expect(await verdict.payoutFor(Kind.Scalar, INT128_MIN, INT128_MAX, INT128_MAX - 1n)).to.equal(ONE_HBAR - 1n);
+      expect(await verdict.payoutFor(Kind.Scalar, INT128_MIN, INT128_MAX, 10n ** 70n)).to.equal(ONE_HBAR);
     });
 
     it("refuses a feed the resolver does not know, with the resolver's own error", async function () {
@@ -338,7 +388,7 @@ describe("Verdict", function () {
         await expectInvariants(ctx, [id]);
 
         const roundId = await pushRound(feed, c.answer, expiry - 10n);
-        await setTime(expiry);
+        await setTime(expiry + 1n);
         const schedule = (await verdict.getMarket(id)).schedule;
         await expect(hss.executeSchedule(schedule))
           .to.emit(verdict, "Resolved")
@@ -467,7 +517,11 @@ describe("Verdict", function () {
       const { id, expiry } = await createMarket(ctx, { kind: Kind.Above, lower: 1n });
       await pushRound(feed, 2n, await now());
       await expect(verdict.resolve(id)).to.be.revertedWithCustomError(verdict, "MarketNotExpired").withArgs(id);
-      await setTime(expiry);
+      // The expiry second itself is still too early (review L2): the reading at expiry is only final after it.
+      // setNextTime pins the resolve transaction's own block to that second.
+      await setNextTime(expiry);
+      await expect(verdict.resolve(id)).to.be.revertedWithCustomError(verdict, "MarketNotExpired").withArgs(id);
+      await setTime(expiry + 1n);
       await expect(verdict.resolve(id))
         .to.emit(verdict, "Resolved")
         .withArgs(id, ONE_HBAR, 2n, anyValue, anyValue, false);
@@ -495,13 +549,14 @@ describe("Verdict", function () {
       const { verdict, hss, feed } = ctx;
       const { id, expiry } = await createMarket(ctx, { kind: Kind.Above, lower: 1000n });
       await pushRound(feed, 1100n, expiry - 1n);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await verdict.resolve(id);
       await pushRound(feed, 1n, expiry);
       await expect(verdict.resolve(id)).to.be.revertedWithCustomError(verdict, "MarketNotOpen");
-      await expect(hss.executeSchedule((await verdict.getMarket(id)).schedule))
-        .to.emit(verdict, "ResolveDeferred")
-        .withArgs(id, "already settled");
+      // The manual settlement deleted the schedule, so the network never runs it; a direct call to
+      // resolveScheduled, by anyone, finds the market settled and changes nothing.
+      expect((await hss.scheduleAt((await verdict.getMarket(id)).schedule)).deleted).to.equal(true);
+      await expect(verdict.resolveScheduled(id)).to.emit(verdict, "ResolveDeferred").withArgs(id, "already settled");
       await setTime(expiry + DAY);
       await expect(verdict.voidMarket(id)).to.be.revertedWithCustomError(verdict, "MarketNotOpen");
       expect((await verdict.getMarket(id)).payout).to.equal(ONE_HBAR);
@@ -513,7 +568,9 @@ describe("Verdict", function () {
       const { id, expiry } = await createMarket(ctx, { kind: Kind.Above, lower: 1n });
       await expect(verdict.resolveScheduled(99)).to.emit(verdict, "ResolveDeferred").withArgs(99, "no such market");
       await expect(verdict.resolveScheduled(id)).to.emit(verdict, "ResolveDeferred").withArgs(id, "not expired");
-      await setTime(expiry);
+      await setNextTime(expiry);
+      await expect(verdict.resolveScheduled(id)).to.emit(verdict, "ResolveDeferred").withArgs(id, "not expired");
+      await setTime(expiry + 1n);
       await expect(verdict.resolveScheduled(id)).to.emit(verdict, "ResolveDeferred").withArgs(id, "no fresh reading");
       await pushRound(feed, 2n, expiry);
       await expect(verdict.resolveScheduled(id))
@@ -532,7 +589,7 @@ describe("Verdict", function () {
         .connect(alice)
         .createMarket(failing, ethers.ZeroHash, Kind.Above, 0n, 0n, expiry, { value: creationCost });
       await failing.setReverting(true);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await expect(verdict.resolve(0)).to.be.revertedWithCustomError(verdict, "NoFreshReading").withArgs(0);
       await expect(verdict.resolveScheduled(0)).to.emit(verdict, "ResolveDeferred").withArgs(0, "no fresh reading");
       await setTime(expiry + DAY);
@@ -543,6 +600,68 @@ describe("Verdict", function () {
     });
   });
 
+  describe("schedule cleanup on settlement (review M2)", function () {
+    it("a manual resolve deletes the pending schedule before the reserve is released", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, hss, feed, owner, bob } = ctx;
+      const { id, expiry } = await createMarket(ctx, { kind: Kind.Above, lower: 1n });
+      const schedule = (await verdict.getMarket(id)).schedule;
+      expect((await hss.scheduleAt(schedule)).deleted).to.equal(false);
+      await pushRound(feed, 2n, expiry);
+      await setTime(expiry + 1n);
+      await expect(verdict.resolve(id)).to.emit(verdict, "Resolved");
+      const scheduled = await hss.scheduleAt(schedule);
+      expect(scheduled.deleted).to.equal(true);
+      expect(scheduled.executed).to.equal(false);
+      expect((await verdict.getMarket(id)).schedule, "the schedule address stays as a record").to.equal(schedule);
+      expect(await verdict.pendingReserves()).to.equal(0n);
+      // The network cannot run a deleted schedule, so the swept reserve can never be charged afterwards.
+      await expect(hss.executeSchedule(schedule)).to.be.revertedWith("schedule finished");
+      await expect(verdict.connect(owner).sweepSurplus(bob.address)).to.changeEtherBalance(bob, RESERVE);
+      await expectInvariants(ctx, [id]);
+    });
+
+    it("voidMarket deletes the pending schedule too", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, hss } = ctx;
+      const { id, expiry } = await createMarket(ctx, { kind: Kind.Above, lower: 1n });
+      const schedule = (await verdict.getMarket(id)).schedule;
+      await setTime(expiry + DAY);
+      await expect(verdict.voidMarket(id)).to.emit(verdict, "Voided");
+      expect((await hss.scheduleAt(schedule)).deleted).to.equal(true);
+      await expect(hss.executeSchedule(schedule)).to.be.revertedWith("schedule finished");
+    });
+
+    it("a settlement by the schedule is not double-handled and the reserve covers the run's charge", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, hss, feed, alice, owner, bob } = ctx;
+      const { id, expiry } = await createMarket(ctx, { kind: Kind.Above, lower: 1n });
+      await verdict.connect(alice).split(id, alice.address, alice.address, { value: 3n * ONE_HBAR });
+      const schedule = (await verdict.getMarket(id)).schedule;
+      const verdictAddress = await verdict.getAddress();
+      // Until the run, the reserve is pending and nothing above collateral plus reserves exists to sweep.
+      await expect(verdict.connect(owner).sweepSurplus(bob.address)).to.be.revertedWithCustomError(
+        verdict,
+        "NothingToSweep",
+      );
+      await pushRound(feed, 2n, expiry);
+      await setTime(expiry + 1n);
+      await expect(hss.executeSchedule(schedule)).to.emit(verdict, "Resolved");
+      const scheduled = await hss.scheduleAt(schedule);
+      expect(scheduled.executed).to.equal(true);
+      expect(scheduled.deleted, "the delete from inside the run fails harmlessly").to.equal(false);
+      await expect(hss.executeSchedule(schedule)).to.be.revertedWith("schedule finished");
+      // The mock charges nothing for the run. On Hedera the network charges this contract, as the
+      // schedule's payer, when the run executes; simulate that charge out of the balance now. Invariant
+      // 1 holds because the reserve was still held, not swept, at the moment the charge could land.
+      const charge = RESERVE / 2n;
+      await setBalance(verdictAddress, (await ethers.provider.getBalance(verdictAddress)) - charge);
+      await expectInvariants(ctx, [id]);
+      await expect(verdict.connect(owner).sweepSurplus(bob.address)).to.changeEtherBalance(bob, RESERVE - charge);
+      await expectInvariants(ctx, [id]);
+    });
+  });
+
   describe("stale feeds and voiding (brief items 6 and 7)", function () {
     it("a stale feed blocks resolve, defers the scheduled run, and voidMarket then fixes the payout at 0.5 HBAR", async function () {
       const ctx = await loadFixture(deployVerdict);
@@ -550,7 +669,7 @@ describe("Verdict", function () {
       const { id, expiry, yes, no } = await createMarket(ctx, { kind: Kind.Above, lower: 1n });
       await verdict.connect(alice).split(id, alice.address, alice.address, { value: 4n * ONE_HBAR });
       await pushRound(feed, 2n, expiry - SIX_HOURS - 1n);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await expect(verdict.resolve(id)).to.be.revertedWithCustomError(verdict, "NoFreshReading").withArgs(id);
       await expect(hss.executeSchedule((await verdict.getMarket(id)).schedule))
         .to.emit(verdict, "ResolveDeferred")
@@ -605,7 +724,7 @@ describe("Verdict", function () {
       const { id, expiry, yes, no } = await createMarket(ctx, { kind: Kind.Scalar, lower: 0n, upper: 3n });
       await verdict.connect(alice).split(id, alice.address, alice.address, { value: 10n });
       await pushRound(feed, 1n, expiry);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await verdict.resolve(id);
       expect((await verdict.getMarket(id)).payout).to.equal(33_333_333n);
       await approveBoth(ctx, alice, yes, no, 10n);
@@ -628,7 +747,7 @@ describe("Verdict", function () {
         .to.be.revertedWithCustomError(verdict, "MarketNotSettled")
         .withArgs(id);
       await pushRound(feed, 2n, expiry);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await verdict.resolve(id);
       await expect(verdict.connect(alice).redeem(id, 0n, 0n, alice.address)).to.be.revertedWithCustomError(
         verdict,
@@ -714,47 +833,38 @@ describe("Verdict", function () {
       expect(code).to.equal(CODE_INVALID_SIGNATURE);
     });
 
-    it("an HSS failure does not block creation: ScheduleFailed carries the code and resolve still works", async function () {
+    it("an HSS failure does not block creation: ScheduleFailed carries the code, no reserve is charged, resolve still works", async function () {
       const ctx = await loadFixture(deployVerdict);
-      const { verdict, hss, feed, alice, resolver, feedId, creationCost } = ctx;
+      const { verdict, hss, feed, alice, owner, bob, resolver, feedId, creationCost } = ctx;
       await hss.setForcedCode(CODE_SCHEDULE_TOO_FAR);
       const expiry = (await now()) + HOUR;
-      await expect(
-        verdict.connect(alice).createMarket(resolver, feedId, Kind.Above, 1n, 0n, expiry, { value: creationCost }),
-      )
-        .to.emit(verdict, "ScheduleFailed")
-        .withArgs(0, CODE_SCHEDULE_TOO_FAR);
+      const tx = verdict
+        .connect(alice)
+        .createMarket(resolver, feedId, Kind.Above, 1n, 0n, expiry, { value: creationCost });
+      await expect(tx).to.emit(verdict, "ScheduleFailed").withArgs(0, CODE_SCHEDULE_TOO_FAR);
+      // With no schedule there is nothing for a reserve to pay for (review L5): the creator is charged the
+      // token creations only and the reserve comes back in the refund.
+      await expect(tx).to.changeEtherBalances([alice, verdict], [-(2n * ONE_HBAR), 0n]);
       const m = await verdict.getMarket(0);
       expect(m.schedule).to.equal(ethers.ZeroAddress);
-      expect(m.reserve).to.equal(RESERVE);
+      expect(m.reserve).to.equal(0n);
+      expect(await verdict.pendingReserves()).to.equal(0n);
+      await expect(verdict.connect(owner).sweepSurplus(bob.address)).to.be.revertedWithCustomError(
+        verdict,
+        "NothingToSweep",
+      );
       await pushRound(feed, 2n, expiry);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await expect(verdict.resolve(0)).to.emit(verdict, "Resolved");
+      await expectInvariants(ctx, [0n]);
     });
 
-    it("a full expiry second makes createMarket schedule at the next free second", async function () {
-      const ctx = await loadFixture(deployVerdict);
-      const { verdict, hss, feed } = ctx;
-      const expiry = (await now()) + HOUR;
-      await hss.setBusy(expiry, true);
-      await hss.setBusy(expiry + 1n, true);
-      const { id } = await createMarket(ctx, { kind: Kind.Above, lower: 1n, expiry });
-      const schedule = (await verdict.getMarket(id)).schedule;
-      expect((await hss.scheduleAt(schedule)).expirySecond).to.equal(expiry + 2n);
-      // The scheduled run happens two seconds late and still settles on the reading at expiry.
-      await pushRound(feed, 7n, expiry - 1n);
-      await pushRound(feed, 1n, expiry + 1n);
-      await setTime(expiry + 2n);
-      await expect(hss.executeSchedule(schedule))
-        .to.emit(verdict, "Resolved")
-        .withArgs(id, ONE_HBAR, 7n, anyValue, expiry - 1n, true);
-    });
-
-    it("when every probed second is full the schedule fails with the busy code and the market stays usable", async function () {
+    it("a capacity probe that reverts reads as no capacity and never blocks creation", async function () {
       const ctx = await loadFixture(deployVerdict);
       const { verdict, hss } = ctx;
       const expiry = (await now()) + HOUR;
-      for (let i = 0n; i <= 8n; i++) await hss.setBusy(expiry + i, true);
+      await hss.setCapacityReverts(true);
+      const before = await hss.scheduleCount();
       await expect(
         verdict
           .connect(ctx.alice)
@@ -762,7 +872,53 @@ describe("Verdict", function () {
       )
         .to.emit(verdict, "ScheduleFailed")
         .withArgs(0, CODE_SCHEDULE_EXPIRY_BUSY);
+      expect(await hss.scheduleCount(), "no schedule was attempted").to.equal(before);
+      expect((await verdict.getMarket(0)).reserve).to.equal(0n);
+      await hss.setCapacityReverts(false);
+      const { id } = await createMarket(ctx, { kind: Kind.Above, lower: 1n, expiry });
+      expect((await verdict.getMarket(id)).schedule).to.not.equal(ethers.ZeroAddress);
+    });
+
+    it("a full expiry second makes createMarket schedule at the next free second", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, hss, feed } = ctx;
+      const expiry = (await now()) + HOUR;
+      await hss.setBusy(expiry + 1n, true);
+      await hss.setBusy(expiry + 2n, true);
+      const { id } = await createMarket(ctx, { kind: Kind.Above, lower: 1n, expiry });
+      const schedule = (await verdict.getMarket(id)).schedule;
+      expect((await hss.scheduleAt(schedule)).expirySecond).to.equal(expiry + 3n);
+      // The scheduled run happens two seconds late and still settles on the reading at expiry.
+      await pushRound(feed, 7n, expiry - 1n);
+      await pushRound(feed, 1n, expiry + 1n);
+      await setTime(expiry + 3n);
+      await expect(hss.executeSchedule(schedule))
+        .to.emit(verdict, "Resolved")
+        .withArgs(id, ONE_HBAR, 7n, anyValue, expiry - 1n, true);
+    });
+
+    it("when every probed second is full the schedule fails with the busy code without a scheduleCall, and the market stays usable", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, hss } = ctx;
+      const expiry = (await now()) + HOUR;
+      // The eight seconds after expiry are probed; the eighth is checked like the others, so nothing is
+      // scheduled blind beyond it.
+      for (let i = 1n; i <= 8n; i++) await hss.setBusy(expiry + i, true);
+      const before = await hss.scheduleCount();
+      await expect(
+        verdict
+          .connect(ctx.alice)
+          .createMarket(ctx.resolver, ctx.feedId, Kind.Above, 1n, 0n, expiry, { value: ctx.creationCost }),
+      )
+        .to.emit(verdict, "ScheduleFailed")
+        .withArgs(0, CODE_SCHEDULE_EXPIRY_BUSY);
+      expect(await hss.scheduleCount(), "no schedule was attempted").to.equal(before);
       expect((await verdict.getMarket(0)).schedule).to.equal(ethers.ZeroAddress);
+      expect((await verdict.getMarket(0)).reserve).to.equal(0n);
+      // Free the eighth second and the next market lands there.
+      await hss.setBusy(expiry + 8n, false);
+      const { id } = await createMarket(ctx, { kind: Kind.Above, lower: 1n, expiry });
+      expect((await hss.scheduleAt((await verdict.getMarket(id)).schedule)).expirySecond).to.equal(expiry + 8n);
     });
   });
 
@@ -789,7 +945,7 @@ describe("Verdict", function () {
       );
 
       await pushRound(feed, 2n, expiry);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await verdict.resolve(id);
       await expect(verdict.connect(owner).sweepSurplus(bob.address)).to.changeEtherBalances(
         [verdict, bob],
@@ -852,7 +1008,7 @@ describe("Verdict", function () {
     it("re-entering redeem or split from a redemption payment is blocked too", async function () {
       const { ctx, hostile, id, expiry } = await hostileMarket();
       await pushRound(ctx.feed, 2n, expiry);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await ctx.verdict.resolve(id);
       await hostile.arm(2, id, true);
       await expect(hostile.callRedeem(id, 100n, 0n)).to.changeEtherBalances([ctx.verdict, hostile], [-100n, 100n]);
@@ -894,7 +1050,7 @@ describe("Verdict", function () {
         if (moved > 0n) await yes.connect(alice).transfer(bob.address, moved);
 
         await pushRound(feed, random(upper + 1n), expiry);
-        await setTime(expiry);
+        await setTime(expiry + 1n);
         await verdict.resolve(id);
         const collateralBefore = (await verdict.getMarket(id)).collateral;
         expect(collateralBefore).to.equal(aliceStake + bobStake);

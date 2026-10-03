@@ -105,19 +105,50 @@ describe("ChainlinkResolver", function () {
       expect(await resolver.readingAt(feedId, T)).to.deep.equal([true, 123n, 8n, latest, T - 5n]);
     });
 
-    it("walks back at most 32 rounds and gives up beyond that", async function () {
+    it("finds the round current at the requested time behind 100 later rounds", async function () {
       const { resolver, feed, feedId } = await loadFixture(deployResolver);
+      await pushRound(feed, 400n, T - 20n);
       const good = await pushRound(feed, 500n, T - 10n);
-      for (let i = 1n; i <= 32n; i++) await pushRound(feed, 600n, T + i);
+      for (let i = 1n; i <= 100n; i++) await pushRound(feed, 600n, T + i);
       expect(await resolver.readingAt(feedId, T)).to.deep.equal([true, 500n, 8n, good, T - 10n]);
-      await pushRound(feed, 700n, T + 33n);
+      expect(good).to.equal(PHASE | 2n);
+    });
+
+    it("finds the target when it is the first round of the phase", async function () {
+      const { resolver, feed, feedId } = await loadFixture(deployResolver);
+      const first = await pushRound(feed, 500n, T - 10n);
+      for (let i = 1n; i <= 5n; i++) await pushRound(feed, 600n, T + i);
+      expect(await resolver.readingAt(feedId, T)).to.deep.equal([true, 500n, 8n, first, T - 10n]);
+      expect(first).to.equal(PHASE | 1n);
+    });
+
+    it("finds the target at every position of a short history", async function () {
+      const { resolver, feed, feedId } = await loadFixture(deployResolver);
+      const ids: bigint[] = [];
+      for (let i = 0n; i < 9n; i++) ids.push(await pushRound(feed, 100n + i, T - 100n + 10n * i));
+      for (let i = 0n; i < 9n; i++) {
+        const at = T - 100n + 10n * i;
+        const expected = [true, 100n + i, 8n, ids[Number(i)], at];
+        expect(await resolver.readingAt(feedId, at), `exactly at round ${i}`).to.deep.equal(expected);
+        expect(await resolver.readingAt(feedId, at + 5n), `between rounds ${i} and ${i + 1n}`).to.deep.equal(expected);
+      }
+      expect(await resolver.readingAt(feedId, T - 101n)).to.deep.equal(notOk);
+    });
+
+    it("returns ok false when every round in the phase is after the requested time", async function () {
+      const { resolver, feed, feedId } = await loadFixture(deployResolver);
+      await pushRound(feed, 100n, T + 1n);
+      expect(await resolver.readingAt(feedId, T)).to.deep.equal(notOk);
+      await pushRound(feed, 200n, T + 2n);
       expect(await resolver.readingAt(feedId, T)).to.deep.equal(notOk);
     });
 
-    it("returns ok false when the walk runs off the start of the feed's history", async function () {
+    it("returns ok false when a read inside the search fails, as on an aggregator that dropped early history", async function () {
       const { resolver, feed, feedId } = await loadFixture(deployResolver);
-      await pushRound(feed, 100n, T + 1n);
-      await pushRound(feed, 200n, T + 2n);
+      const good = await pushRound(feed, 500n, T - 10n);
+      for (let i = 1n; i <= 3n; i++) await pushRound(feed, 600n, T + i);
+      expect(await resolver.readingAt(feedId, T)).to.deep.equal([true, 500n, 8n, good, T - 10n]);
+      await feed.setHistoryStart(2n);
       expect(await resolver.readingAt(feedId, T)).to.deep.equal(notOk);
     });
 

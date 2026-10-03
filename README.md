@@ -122,7 +122,7 @@ sequenceDiagram
     Note over HSS,V: at the expiry second
     HSS->>V: resolveScheduled(id)
     V->>CR: readingAt(feed, expiry)
-    CR->>CL: walk getRoundData back to the round current at expiry
+    CR->>CL: binary search getRoundData for the round current at expiry
     CR-->>V: answer and round
     V->>V: fix the YES payout
     App->>HCS: market terms and settlement
@@ -196,7 +196,7 @@ Errors: `HtsError`, `HssError`, `NotAssociated`, `NoSuchMarket`, `ResolverNotAll
 
 ### ChainlinkResolver.sol
 
-Implements `IResolver`: `readingAt(feedId, time)` walks back from `latestRoundData` with `getRoundData` until it finds the round current at `time`, capped at `MAX_WALK` 32 steps with every aggregator read wrapped in `try`, so a failing read becomes "no fresh reading" rather than a revert. It returns `ok` false for a non-positive answer or a round older than the feed's maximum staleness. Feeds are allowlisted at deployment, each with its own staleness limit. `describe` returns a human-readable feed name and `feedDecimals` the feed's decimals. The reference deployment allowlists HBAR / USD, BTC / USD and ETH / USD on Hedera testnet, all 8 decimals with round history confirmed through `getRoundData`. Their addresses and staleness limits (6 hours for HBAR / USD, 24 hours for BTC / USD and ETH / USD, set from the observed update cadence) live in `packages/hardhat/config/addresses.ts`.
+Implements `IResolver`: `readingAt(feedId, time)` reads `latestRoundData` and, when that round is newer than `time`, binary searches the aggregator's current phase with `getRoundData` for the greatest round published at or before `time`, capped at `MAX_READS` 40 reads with every aggregator read wrapped in `try`, so a failing read becomes "no fresh reading" rather than a revert, and the reading stays reachable however many rounds are published after expiry. It returns `ok` false for a non-positive answer or a round older than the feed's maximum staleness. Feeds are allowlisted at deployment, each with its own staleness limit. `describe` returns a human-readable feed name and `feedDecimals` the feed's decimals. The reference deployment allowlists HBAR / USD, BTC / USD and ETH / USD on Hedera testnet, all 8 decimals with round history confirmed through `getRoundData`. Their addresses and staleness limits (6 hours for HBAR / USD, 24 hours for BTC / USD and ETH / USD, set from the observed update cadence) live in `packages/hardhat/config/addresses.ts`.
 
 ### VerdictRouter.sol
 
@@ -237,7 +237,7 @@ Problems hit during this build, with what caused them and what to do. If you hit
 | `hardhat-verify` fails against Sourcify | The Sourcify API v1 that Hardhat 2 plugins speak was removed | Use `yarn hardhat:verify`, which submits to the Sourcify API v2 |
 | Scheduled calls never fire in local tests | The Hedera forking plugin emulates HTS but not HSS | The test suite installs mocks at `0x167` and `0x16b` with `hardhat_setCode` and executes schedules by hand; see `packages/hardhat/test/helpers/hedera.ts` |
 | `split`, a router trade or a token transfer fails with `NotAssociated(token)` (HTS code 184 or 262) | The recipient is not associated with the outcome token and has no free automatic association slot; the facade's `balanceOf` returns 0 for an unassociated account, so a balance read cannot tell you this | Associate first: the app offers a one-click associate through the token facade's `associate()` (HIP-719) before any action that sends tokens, and a wallet can set automatic association slots. On the local mocks, `MockHederaTokenService.setAutoAssociationSlots(account, MaxUint256)` does what a wallet setting does |
-| `getRoundData` returns nothing for old rounds on some oracle deployments | Not every aggregator keeps history | The resolver caps its walk at 32 steps and reports `ok` false when history runs out; check the round walk before choosing a feed |
+| `getRoundData` returns nothing for old rounds on some oracle deployments | Not every aggregator keeps history | The resolver reports `ok` false when a read inside its search fails; check that `getRoundData` returns history before choosing a feed |
 | `useScaffoldEventHistory.ts: Argument of type '{}' is not assignable to parameter of type 'string \| number \| bigint \| boolean'` | The hook assumed every entry in `deployedContracts.ts` has `deployedOnBlock`; the stand-in entries do not. | Fixed in the hook: a missing `deployedOnBlock` reads as block 0. |
 | `Type 'string' is not assignable to parameter of type '0x${string}'` when passing an address to a viem helper | `types/abitype/abi.d.ts` registers `AddressType` as `string`, so viem's `Address` is a plain string in this scaffold. | Cast to `` `0x${string}` `` at the call site, as `lib/feeds.ts` does for `pad`. |
 | HashScan answers 404 for a transaction link from a toast | The scaffold built `/tx/<hash>`; HashScan serves `/transaction/<hash>`. | Fixed in `utils/scaffold-hbar/networks.ts`. |

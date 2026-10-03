@@ -90,8 +90,9 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
     ) external payable override nonReentrant returns (uint256 id) {
         if (!resolverAllowed[resolver]) revert ResolverNotAllowed(resolver);
         _checkExpiry(expiry);
+        if (!_fitsInt128(lower)) revert InvalidBounds();
         if (kind == Kind.Between || kind == Kind.Scalar) {
-            if (upper <= lower) revert InvalidBounds();
+            if (upper <= lower || !_fitsInt128(upper)) revert InvalidBounds();
         } else {
             upper = 0;
         }
@@ -110,12 +111,22 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         m.createdAt = uint64(block.timestamp);
         m.lower = lower;
         m.upper = upper;
-        m.reserve = RESOLUTION_RESERVE;
-        pendingReserves += RESOLUTION_RESERVE;
 
-        uint256 charge = _createTokens(m, id) + RESOLUTION_RESERVE;
+        // The charge is what the token creations and the scheduling actually consumed, measured across both
+        // from the balance, plus the reserve when a schedule exists to spend it. It is checked against
+        // msg.value because the upfront cost is an estimate: the HTS fee is USD-denominated and HSS may
+        // charge the payer at scheduling time.
+        uint256 balanceBefore = address(this).balance;
+        _createTokens(m, id);
         // slither-disable-next-line reentrancy-eth
         m.schedule = _schedule(id, expiry);
+        uint256 charge = balanceBefore - address(this).balance;
+        if (m.schedule != address(0)) {
+            m.reserve = RESOLUTION_RESERVE;
+            pendingReserves += RESOLUTION_RESERVE;
+            charge += RESOLUTION_RESERVE;
+        }
+        if (charge > msg.value) revert InsufficientValue(charge, msg.value);
         _emitCreated(id, m);
 
         if (msg.value > charge) _pay(msg.sender, msg.value - charge);
@@ -262,7 +273,9 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         if (id >= marketCount) return SettleOutcome.NoSuchMarket;
         Market storage m = _markets[id];
         if (m.status != Status.Open) return SettleOutcome.NotOpen;
-        if (block.timestamp < m.expiry) return SettleOutcome.NotExpired;
+        // The expiry second itself is still "not expired": the round current at expiry can only be known
+        // once that second has passed, and the schedule runs from the next second.
+        if (block.timestamp <= m.expiry) return SettleOutcome.NotExpired;
         (bool ok, int256 answer, uint80 roundId, uint64 updatedAt) = _reading(m);
         if (!ok) return SettleOutcome.NoFreshReading;
 
@@ -296,13 +309,26 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         }
     }
 
-    /// @dev Moves a market's reserve out of `pendingReserves`, which makes it sweepable surplus.
+    /// @dev Moves a market's reserve out of `pendingReserves`, which makes it sweepable surplus, and deletes
+    ///      the market's schedule if it has not run, so the network can no longer charge this contract for a
+    ///      run that would find the market settled (invariant 1). Called from inside the scheduled run itself
+    ///      the delete fails, which is harmless, so the code is not checked. `m.schedule` stays as a record.
     function _releaseReserve(Market storage m) private {
         pendingReserves -= m.reserve;
         m.reserve = 0;
+        if (m.schedule != address(0)) {
+            // slither-disable-next-line unused-return
+            HSS.deleteSchedule(m.schedule);
+        }
     }
 
     // ---------------------------------------------------------------- internals: creation
+
+    /// @dev Bounds are kept within int128 so the Scalar interpolation in `_payout` can never overflow, whatever
+    ///      the feed answers; a panic there would brick `resolve`, `resolveScheduled` and `voidMarket`.
+    function _fitsInt128(int256 value) private pure returns (bool) {
+        return value >= type(int128).min && value <= type(int128).max;
+    }
 
     function _checkExpiry(uint64 expiry) private view {
         uint64 earliest = uint64(block.timestamp) + MIN_LEAD;
@@ -311,15 +337,13 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         if (expiry > latest) revert ExpiryTooFar(expiry, latest);
     }
 
-    /// @dev Creates YES and NO and returns the tinybars the two creations actually consumed, measured from
-    ///      the balance, so the creator pays the real HTS fee whatever `tokenCreateValue` is set to.
-    function _createTokens(Market storage m, uint256 id) private returns (uint256 consumed) {
+    /// @dev Creates YES and NO. What the two creations consumed is measured by the caller from the balance,
+    ///      so the creator pays the real HTS fee whatever `tokenCreateValue` is set to.
+    function _createTokens(Market storage m, uint256 id) private {
         string memory suffix = _decimal(id);
-        uint256 balanceBefore = address(this).balance;
         m.yes = _createToken(string.concat("Verdict YES ", suffix), string.concat("VYES", suffix));
         // slither-disable-next-line reentrancy-eth
         m.no = _createToken(string.concat("Verdict NO ", suffix), string.concat("VNO", suffix));
-        return balanceBefore - address(this).balance;
     }
 
     /// @dev One fungible HTS token with 8 decimals, this contract as treasury, supply key and auto-renew
@@ -360,13 +384,20 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         return created;
     }
 
-    /// @dev Schedules `resolveScheduled(id)` at the first second from `expiry` with capacity, probing up to
-    ///      `MAX_SCHEDULE_PROBES` seconds forward. A failure never blocks creation: the market stays usable
-    ///      through `resolve`, and `ScheduleFailed` carries the code.
+    /// @dev Schedules `resolveScheduled(id)` at the first of the `MAX_SCHEDULE_PROBES` seconds after `expiry`
+    ///      that has capacity. When none has, no schedule is attempted and `ScheduleFailed` carries the busy
+    ///      code HSS gives a full second. A failure never blocks creation: the market stays usable through
+    ///      `resolve`, no reserve is charged, and `ScheduleFailed` carries the code.
     function _schedule(uint256 id, uint64 expiry) private returns (address) {
-        uint256 second = expiry;
-        for (uint256 i = 0; i < MAX_SCHEDULE_PROBES && !HSS.hasScheduleCapacity(second, RESOLVE_GAS); i++) {
-            second += 1;
+        uint256 second = 0;
+        bool found = false;
+        for (uint256 i = 1; i <= MAX_SCHEDULE_PROBES && !found; i++) {
+            second = uint256(expiry) + i;
+            found = _hasCapacity(second);
+        }
+        if (!found) {
+            emit ScheduleFailed(id, HederaCodes.SCHEDULE_EXPIRY_IS_BUSY);
+            return address(0);
         }
         (int64 code, address schedule) = HSS.scheduleCall(
             address(this),
@@ -380,6 +411,15 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
             return address(0);
         }
         return schedule;
+    }
+
+    /// @dev The capacity probe never reverts creation: a probe that fails reads as no capacity.
+    function _hasCapacity(uint256 second) private view returns (bool) {
+        try HSS.hasScheduleCapacity(second, RESOLVE_GAS) returns (bool ok) {
+            return ok;
+        } catch {
+            return false;
+        }
     }
 
     function _emitCreated(uint256 id, Market storage m) private {

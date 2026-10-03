@@ -141,10 +141,10 @@ describe("Integration: VerdictRouter against Verdict", function () {
     // sellNo: buy the matching YES, merge through Verdict, forward the refund.
     const noIn = ONE_HBAR / 2n;
     const [needed, outQuote] = await router.quoteSellNo(id, noIn);
-    expect(outQuote).to.equal(noIn);
+    expect(outQuote, "the quote is the net of the YES purchase").to.equal(noIn - needed);
     const extra = ONE_HBAR / 10n;
     await no.connect(bob).approve(f.routerAddress, noIn);
-    const sellNo = router.connect(bob).sellNo(id, noIn, noIn, deadline, { value: needed + extra });
+    const sellNo = router.connect(bob).sellNo(id, noIn, outQuote, deadline, { value: needed + extra });
     await expect(sellNo).to.changeEtherBalance(bob, noIn - needed);
     await expect(sellNo).to.emit(router, "Traded").withArgs(id, bob.address, 3n, noIn, noIn, extra);
     expect(await no.balanceOf(bob.address)).to.equal(ONE_HBAR - noIn);
@@ -162,7 +162,7 @@ describe("Integration: VerdictRouter against Verdict", function () {
 
     // Settlement through the HSS mock at expiry, on the round current at expiry.
     const roundId = await pushRound(feed, ANSWER, expiry - 10n);
-    await setTime(expiry);
+    await setTime(expiry + 1n);
     const schedule = (await verdict.getMarket(id)).schedule;
     await expect(hss.executeSchedule(schedule))
       .to.emit(verdict, "Resolved")
@@ -226,9 +226,9 @@ describe("Integration: VerdictRouter against Verdict", function () {
     expect((await verdict.getMarket(id)).payout).to.equal(ONE_HBAR / 2n);
     await check(f);
 
-    const [needed] = await router.quoteSellNo(id, ONE_HBAR);
+    const [needed, net] = await router.quoteSellNo(id, ONE_HBAR);
     await no.connect(bob).approve(f.routerAddress, ONE_HBAR);
-    const sellNo = router.connect(bob).sellNo(id, ONE_HBAR, ONE_HBAR, (await now()) + 60n, { value: needed });
+    const sellNo = router.connect(bob).sellNo(id, ONE_HBAR, net, (await now()) + 60n, { value: needed });
     await expect(sellNo).to.changeEtherBalance(bob, ONE_HBAR - needed);
     await check(f);
   });

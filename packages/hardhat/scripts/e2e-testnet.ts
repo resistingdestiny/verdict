@@ -142,12 +142,16 @@ async function trades(ctx: TestnetContext, ledger: Ledger, id: bigint, yes: stri
   const noIn = TRADE_TINYBARS;
   await approve(ctx, ledger, `${K}:approve-sellNo`, `Approve VerdictRouter on NO for sellNo`, no, routerAddress, noIn);
   await ledger.step(`${K}:sellNo`, `sellNo 1 NO on market ${id}`, async () => {
-    const [needed] = await router.quoteSellNo(id, noIn);
+    const [needed, net] = await router.quoteSellNo(id, noIn);
     const value = (needed * SLIPPAGE_DEN) / SLIPPAGE_NUM;
-    console.log(`  YES quote ${needed} tinybars, sending ${value} tinybars, min out ${noIn}`);
-    const tx = await router.sellNo(id, noIn, noIn, deadlineIn(600), { value: weibars(value), gasLimit: GAS.swap });
+    const minHbarOut = (net * SLIPPAGE_NUM) / SLIPPAGE_DEN; // the net of the YES purchase, less the slippage
+    console.log(`  YES quote ${needed} tinybars, sending ${value} tinybars, net ${net}, min net ${minHbarOut}`);
+    const tx = await router.sellNo(id, noIn, minHbarOut, deadlineIn(600), {
+      value: weibars(value),
+      gasLimit: GAS.swap,
+    });
     await waitFor(tx.hash);
-    return { txHash: tx.hash, data: { needed: needed.toString() } };
+    return { txHash: tx.hash, data: { needed: needed.toString(), net: net.toString() } };
   });
 }
 

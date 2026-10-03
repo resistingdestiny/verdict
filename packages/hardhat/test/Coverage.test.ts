@@ -11,7 +11,7 @@ const REENTRANCY_GUARD_REENTRANT_CALL = ethers.id("ReentrancyGuardReentrantCall(
 
 /**
  * Edge paths the lifecycle, router and property tests do not reach: HTS codes the mocks only produce
- * on request, parked value in the router, degenerate quotes, and the reentrancy guards on the two
+ * on request, value parked in the router by strangers, degenerate quotes, and the reentrancy guards on the two
  * functions whose payments go to the caller rather than to a chosen recipient.
  */
 describe("Coverage: edge paths of Verdict and VerdictRouter", function () {
@@ -63,24 +63,48 @@ describe("Coverage: edge paths of Verdict and VerdictRouter", function () {
       expect(await ctx.router.impliedProbability(other.id)).to.equal(ONE_HBAR);
     });
 
-    it("reverts RouterNotEmpty when HBAR was parked in the router", async function () {
-      await ctx.bob.sendTransaction({ to: ctx.routerAddress, value: 1n });
-      await expect(
-        ctx.router.connect(ctx.bob).buyYes(id, 0n, deadline, { value: ONE_HBAR }),
-      ).to.be.revertedWithCustomError(ctx.router, "RouterNotEmpty");
+    it("still trades when a stranger parked HBAR in the router, and leaves the dust where it was", async function () {
+      const { bob, router } = ctx;
+      await bob.sendTransaction({ to: ctx.routerAddress, value: 1n });
+      await expect(router.connect(bob).buyYes(id, 0n, deadline, { value: ONE_HBAR })).to.emit(router, "Traded");
+      expect(await ethers.provider.getBalance(ctx.routerAddress)).to.equal(1n);
+      await yes.connect(bob).approve(ctx.routerAddress, ONE_HBAR);
+      await expect(router.connect(bob).sellYes(id, ONE_HBAR, 0n, deadline)).to.emit(router, "Traded");
+      expect(await ethers.provider.getBalance(ctx.routerAddress)).to.equal(1n);
     });
 
-    it("reverts RouterNotEmpty when NO or YES was parked in the router", async function () {
+    it("still trades when NO or YES was parked in the router", async function () {
       const { bob, router } = ctx;
       await router.connect(bob).buyNo(id, 0n, deadline, { value: ONE_HBAR });
       await router.connect(bob).buyYes(id, 0n, deadline, { value: ONE_HBAR });
       await no.connect(bob).transfer(ctx.routerAddress, 1n);
-      await expect(router.connect(bob).buyYes(id, 0n, deadline, { value: ONE_HBAR })).to.be.revertedWithCustomError(
-        router,
-        "RouterNotEmpty",
-      );
       await yes.connect(bob).transfer(ctx.routerAddress, 1n);
-      await expect(router.connect(bob).buyYes(id, 0n, deadline, { value: ONE_HBAR })).to.be.revertedWithCustomError(
+      await expect(router.connect(bob).buyYes(id, 0n, deadline, { value: ONE_HBAR })).to.emit(router, "Traded");
+      await expect(router.connect(bob).buyNo(id, 0n, deadline, { value: ONE_HBAR })).to.emit(router, "Traded");
+      const noIn = ONE_HBAR / 2n;
+      const [needed] = await router.quoteSellNo(id, noIn);
+      await no.connect(bob).approve(ctx.routerAddress, noIn);
+      await expect(router.connect(bob).sellNo(id, noIn, 0n, deadline, { value: needed })).to.emit(router, "Traded");
+      expect(await yes.balanceOf(ctx.routerAddress)).to.equal(1n);
+      expect(await no.balanceOf(ctx.routerAddress)).to.equal(1n);
+    });
+
+    it("reverts RouterNotEmpty when a trade leaves the router holding more than it began with", async function () {
+      // A trader contract that pushes 1 NO into the router from the sellNo payout: the trade itself
+      // would end with more NO than it began with, which is the one thing the final check forbids.
+      const { bob, router, hts, verdict } = ctx;
+      const caller = await deployCaller();
+      const callerAddress = await caller.getAddress();
+      const noIn = ONE_HBAR;
+      await verdict.connect(bob).split(id, bob.address, callerAddress, { value: 2n * noIn });
+      await caller.call(
+        await hts.getAddress(),
+        hts.interface.encodeFunctionData("approve", [await no.getAddress(), ctx.routerAddress, noIn]),
+      );
+      const [needed] = await router.quoteSellNo(id, noIn);
+      const trade = router.interface.encodeFunctionData("sellNo", [id, noIn, 0n, deadline]);
+      await caller.arm(await no.getAddress(), no.interface.encodeFunctionData("transfer", [ctx.routerAddress, 1n]));
+      await expect(caller.call(ctx.routerAddress, trade, { value: needed })).to.be.revertedWithCustomError(
         router,
         "RouterNotEmpty",
       );
@@ -131,7 +155,7 @@ describe("Coverage: edge paths of Verdict and VerdictRouter", function () {
     it("rejects a NO redemption beyond int64 even when the YES amount is fine", async function () {
       const { verdict, feed, bob } = ctx;
       await pushRound(feed, 1500n, expiry - 1n);
-      await setTime(expiry);
+      await setTime(expiry + 1n);
       await verdict.resolve(id);
       await expect(verdict.connect(bob).redeem(id, 0n, INT64_MAX + 1n, bob.address)).to.be.revertedWithCustomError(
         verdict,

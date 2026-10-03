@@ -38,7 +38,7 @@ const TRADES: { key: Trade; label: string; unit: "HBAR" | "YES" | "NO"; summary:
     label: "Sell NO",
     unit: "NO",
     summary:
-      "Buys the matching YES in the pool with HBAR you send along, merges the pairs and pays you the HBAR, plus whatever was not spent.",
+      "Buys the matching YES in the pool with HBAR you send along, merges the pairs and pays you the merged HBAR plus whatever was not spent. The quote is your net: the NO's worth less the YES cost.",
   },
 ];
 
@@ -177,7 +177,7 @@ export const TradePanel = ({ market, hasPool, onTraded }: TradePanelProps) => {
           ? []
           : [
               `Send ${tinybarsToHbar(applySlippage(sellNoOut[0], bps, "up"), 4)} HBAR along to buy the matching YES; what is not spent comes back.`,
-              `You receive about ${tinybarsToHbar(sellNoOut[1], 4)} HBAR net, at least ${tinybarsToHbar(applySlippage(sellNoOut[1], bps, "down"), 4)} after slippage.`,
+              `You receive about ${tinybarsToHbar(sellNoOut[1], 4)} HBAR net of the YES purchase, at least ${tinybarsToHbar(applySlippage(sellNoOut[1], bps, "down"), 4)} after slippage.`,
             ];
     }
   };
