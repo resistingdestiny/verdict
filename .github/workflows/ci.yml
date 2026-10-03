@@ -29,6 +29,9 @@ jobs:
       - name: Install
         run: yarn install --immutable
 
+      - name: Compile contracts
+        run: yarn hardhat:compile
+
       - name: Lint frontend
         run: yarn next:lint --max-warnings=0
 

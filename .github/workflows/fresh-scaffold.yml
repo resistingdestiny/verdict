@@ -31,6 +31,11 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
+      - name: Git identity (the CLI refuses to run without one)
+        run: |
+          git config --global user.name "Fresh scaffold check"
+          git config --global user.email "ci@example.com"
+
       - name: Scaffold from this commit
         run: |
           npm create scaffold-hbar@latest fresh -- \
