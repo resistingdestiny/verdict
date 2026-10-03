@@ -67,6 +67,7 @@ Each entry is a decision the brief left open, a spike finding, or a cut, with on
 | 2026-10-03 | `verify-all` runs under ts-node without a network and asks Sourcify for an existing match before submitting. | The verify flow needs only artifacts and deployment files; the lookup makes a rerun free and keeps the submit path idempotent. |
 | 2026-10-03 | The testnet scripts refuse to run as Hardhat's default account or on any network but `hederaTestnet`. | `hardhat.config.ts` falls back to the well-known key silently when `DEPLOYER_PRIVATE_KEY` is unset, which would fail with a confusing error after the balance check. |
 | 2026-10-03 | Mirror node lookups in the ledger retry for up to 45 seconds on 404 and otherwise leave the step pending; the final flush writes hash-only rows. | The mirror lags consensus by seconds; a lagging lookup must never lose a row or block a paid step. |
+| 2026-10-03 | `yarn hardhat:chain` runs a plain Hardhat node and the `hardhat` network forks Hedera testnet only when `HEDERA_FORKING=true` (`yarn hardhat:fork`). | The local deployment mocks HTS and HSS at 0x167 and 0x16b, so forked state adds nothing; with forking on, the local deploy timed out on relay calls (HeadersTimeoutError) and was not hermetic. Without it the full local deploy with three sample markets takes 13 seconds offline. |
 
 ## Spike findings
 

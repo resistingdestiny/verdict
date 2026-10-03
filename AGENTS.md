@@ -53,7 +53,7 @@ yarn install
 yarn next:dev
 
 # Local chain, deploy, frontend (separate terminals)
-yarn hardhat:chain                       # Hedera-forked Hardhat node on 8545
+yarn hardhat:chain                       # local Hardhat node on 8545 with HTS and HSS mocked (yarn hardhat:fork forks Hedera testnet)
 yarn hardhat:deploy --network localhost  # deploy to the running fork
 yarn next:start
 

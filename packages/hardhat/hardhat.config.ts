@@ -54,12 +54,18 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      forking: {
-        url: hederaRpcUrl,
-        // @ts-expect-error - custom property for hedera-forking plugin
-        chainId: 296,
-        workerPort: 10001,
-      },
+      // Verdict mocks the Hedera system contracts locally, so the plain Hardhat network is enough for
+      // `yarn hardhat:chain`, tests and the local deployment. `yarn hardhat:fork` sets HEDERA_FORKING
+      // and forks Hedera testnet through the forking plugin for experiments against live state.
+      forking:
+        process.env.HEDERA_FORKING === "true"
+          ? {
+              url: hederaRpcUrl,
+              // @ts-expect-error - custom property for hedera-forking plugin
+              chainId: 296,
+              workerPort: 10001,
+            }
+          : undefined,
     },
     hederaTestnet: {
       url: "https://testnet.hashio.io/api",

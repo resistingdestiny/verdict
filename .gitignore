@@ -31,4 +31,3 @@ HANDOFF.md
 .env
 .env.*
 !.env.example
-.library-doc-pending.md
