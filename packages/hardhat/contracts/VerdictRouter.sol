@@ -16,9 +16,18 @@ import { ISaucerSwapRouter } from "./interfaces/ISaucerSwapRouter.sol";
 ///         and uses only the public functions of Verdict and SaucerSwap, so a fault here cannot
 ///         reach collateral. Every trade checks its deadline, enforces its slippage bound with the
 ///         router's own errors, associates the router with the market's tokens on first use, and
-///         ends by asserting the router is empty.
+///         ends by asserting the trade left nothing behind: the router holds no more HBAR, YES or NO
+///         than it did when the trade began. Anything sent to the router directly stays where it is
+///         and never blocks a trade.
 contract VerdictRouter is IVerdictRouter {
     IHederaTokenService internal constant HTS = IHederaTokenService(address(0x167));
+
+    /// @dev What the router held when a trade began, before `msg.value` arrived.
+    struct Holdings {
+        uint256 hbar;
+        uint256 yes;
+        uint256 no;
+    }
 
     IVerdict public immutable verdict;
     ISaucerSwapRouter public immutable saucerRouter;
@@ -40,6 +49,7 @@ contract VerdictRouter is IVerdictRouter {
         _checkDeadline(deadline);
         if (msg.value == 0) revert ZeroAmount();
         IVerdict.Market memory m = _marketOf(id);
+        Holdings memory before = _holdings(m.yes, m.no);
         _poolOf(id, m.yes);
         address[] memory path = _path(whbar, m.yes);
         uint256[] memory amounts = saucerRouter.swapExactETHForTokens{ value: msg.value }(
@@ -51,7 +61,7 @@ contract VerdictRouter is IVerdictRouter {
         yesOut = amounts[1];
         if (yesOut < minYesOut) revert Slippage(minYesOut, yesOut);
         emit Traded(id, msg.sender, Trade.BuyYes, msg.value, yesOut, 0);
-        _assertEmpty(m.yes, m.no);
+        _assertNothingKept(before, m.yes, m.no);
     }
 
     /// @inheritdoc IVerdictRouter
@@ -64,6 +74,7 @@ contract VerdictRouter is IVerdictRouter {
         _checkDeadline(deadline);
         if (yesIn == 0) revert ZeroAmount();
         IVerdict.Market memory m = _marketOf(id);
+        Holdings memory before = _holdings(m.yes, m.no);
         _poolOf(id, m.yes);
         _ensureAssociated(m.yes);
         _pullFromUser(m.yes, yesIn);
@@ -73,7 +84,7 @@ contract VerdictRouter is IVerdictRouter {
         hbarOut = amounts[1];
         if (hbarOut < minHbarOut) revert Slippage(minHbarOut, hbarOut);
         emit Traded(id, msg.sender, Trade.SellYes, yesIn, hbarOut, 0);
-        _assertEmpty(m.yes, m.no);
+        _assertNothingKept(before, m.yes, m.no);
     }
 
     /// @inheritdoc IVerdictRouter
@@ -85,6 +96,7 @@ contract VerdictRouter is IVerdictRouter {
         _checkDeadline(deadline);
         if (msg.value == 0) revert ZeroAmount();
         IVerdict.Market memory m = _marketOf(id);
+        Holdings memory before = _holdings(m.yes, m.no);
         _poolOf(id, m.yes);
         _ensureAssociated(m.yes);
         _ensureAssociated(m.no);
@@ -96,7 +108,7 @@ contract VerdictRouter is IVerdictRouter {
         hbarBack = amounts[1];
         if (hbarBack < minHbarBack) revert Slippage(minHbarBack, hbarBack);
         emit Traded(id, msg.sender, Trade.BuyNo, msg.value, noOut, hbarBack);
-        _assertEmpty(m.yes, m.no);
+        _assertNothingKept(before, m.yes, m.no);
     }
 
     /// @inheritdoc IVerdictRouter
@@ -109,6 +121,7 @@ contract VerdictRouter is IVerdictRouter {
         _checkDeadline(deadline);
         if (noIn == 0) revert ZeroAmount();
         IVerdict.Market memory m = _marketOf(id);
+        Holdings memory before = _holdings(m.yes, m.no);
         _poolOf(id, m.yes);
         address[] memory path = _path(whbar, m.yes);
         uint256[] memory amounts = saucerRouter.getAmountsIn(noIn, path);
@@ -127,7 +140,7 @@ contract VerdictRouter is IVerdictRouter {
         if (hbarOut < minHbarOut) revert Slippage(minHbarOut, hbarOut);
         emit Traded(id, msg.sender, Trade.SellNo, noIn, noIn, refund);
         _sendHbar(msg.sender, hbarOut);
-        _assertEmpty(m.yes, m.no);
+        _assertNothingKept(before, m.yes, m.no);
     }
 
     // ---------------------------------------------------------------- views
@@ -233,11 +246,20 @@ contract VerdictRouter is IVerdictRouter {
         if (!ok) revert TransferFailed(to, amount);
     }
 
-    function _assertEmpty(address yes, address no) internal view {
+    /// @dev The router's HBAR, YES and NO before a trade, with the trade's own `msg.value` left out.
+    function _holdings(address yes, address no) internal view returns (Holdings memory before) {
+        before.hbar = address(this).balance - msg.value;
+        before.yes = IERC20(yes).balanceOf(address(this));
+        before.no = IERC20(no).balanceOf(address(this));
+    }
+
+    /// @dev Reverts when a trade left the router holding more than it began with. Dust sent to the
+    ///      router by a stranger is not the trade's and does not count.
+    function _assertNothingKept(Holdings memory before, address yes, address no) internal view {
         if (
-            address(this).balance != 0 ||
-            IERC20(yes).balanceOf(address(this)) != 0 ||
-            IERC20(no).balanceOf(address(this)) != 0
+            address(this).balance > before.hbar ||
+            IERC20(yes).balanceOf(address(this)) > before.yes ||
+            IERC20(no).balanceOf(address(this)) > before.no
         ) {
             revert RouterNotEmpty();
         }
