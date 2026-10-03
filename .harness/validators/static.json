@@ -1,6 +1,6 @@
 {
   "name": "verdict-outside-kind-static",
-  "description": "Static invariants for the Outside market kind: the enum value, the payoff branch, the test table, the label and the diagram, with the repo's docs and layout intact.",
+  "description": "Static invariants for the Outside market kind: the enum value, the bounds check and payoff branch, the test helper mirror, the test table, the frontend lib, the question text, the API and record builders, the scripts and the README, with the repo's docs and layout intact.",
   "jsonAssertions": [
     {
       "file": "package.json",
@@ -21,7 +21,14 @@
       "packages/nextjs/lib/payoff.ts",
       "packages/nextjs/components/PayoffDiagram.tsx",
       ".harness/spec.yaml",
-      ".harness/prd.md"
+      ".harness/prd.md",
+      "packages/hardhat/test/helpers/verdict.ts",
+      "packages/nextjs/lib/question.ts",
+      "packages/nextjs/app/api/_lib/messages.ts",
+      "packages/nextjs/app/llms.txt/route.ts",
+      "packages/hardhat/scripts/lib/testnetMarket.ts",
+      "packages/hardhat/scripts/record-sync.ts",
+      "docs/img/payoff-outside.svg"
     ],
     "forbidden": [
       ".env",
@@ -33,23 +40,71 @@
   "textAssertions": [
     {
       "file": "packages/hardhat/contracts/interfaces/IVerdict.sol",
-      "contains": ["Outside"]
+      "contains": [
+        "Outside"
+      ]
     },
     {
       "file": "packages/hardhat/contracts/Verdict.sol",
-      "contains": ["Outside"]
+      "contains": [
+        "Outside"
+      ]
     },
     {
       "file": "packages/hardhat/test/Verdict.test.ts",
-      "contains": ["Outside"]
+      "contains": [
+        "Outside"
+      ]
     },
     {
       "file": "packages/nextjs/lib/payoff.ts",
-      "contains": ["Outside"]
+      "contains": [
+        "Outside"
+      ]
     },
     {
       "file": "README.md",
-      "contains": ["yarn hardhat:test"]
+      "contains": [
+        "yarn hardhat:test",
+        "Outside",
+        "payoff-outside.svg"
+      ]
+    },
+    {
+      "file": "packages/hardhat/test/helpers/verdict.ts",
+      "contains": [
+        "Outside"
+      ]
+    },
+    {
+      "file": "packages/nextjs/lib/question.ts",
+      "contains": [
+        "Outside"
+      ]
+    },
+    {
+      "file": "packages/nextjs/app/api/_lib/messages.ts",
+      "contains": [
+        "Outside"
+      ]
+    },
+    {
+      "file": "packages/nextjs/app/llms.txt/route.ts",
+      "contains": [
+        "Outside"
+      ]
+    },
+    {
+      "file": "packages/hardhat/scripts/lib/testnetMarket.ts",
+      "contains": [
+        "Outside"
+      ]
+    },
+    {
+      "file": "packages/hardhat/scripts/record-sync.ts",
+      "contains": [
+        "Outside"
+      ]
     }
   ]
 }
