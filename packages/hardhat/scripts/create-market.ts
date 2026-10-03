@@ -19,7 +19,8 @@ async function main() {
   requireArgs(args, ["feed", "kind", "lower", "expiry"]);
 
   const feed = TESTNET_ADDRESSES.chainlink[args.feed];
-  if (!feed) throw new Error(`Unknown feed "${args.feed}". Known: ${Object.keys(TESTNET_ADDRESSES.chainlink).join(", ")}`);
+  if (!feed)
+    throw new Error(`Unknown feed "${args.feed}". Known: ${Object.keys(TESTNET_ADDRESSES.chainlink).join(", ")}`);
   const kind = KINDS[args.kind];
   if (kind === undefined) throw new Error(`Unknown kind "${args.kind}". Known: ${Object.keys(KINDS).join(", ")}`);
   const needsUpper = kind === 2 || kind === 3;
@@ -38,7 +39,9 @@ async function main() {
 
   const cost = await verdict.creationCost();
   const feedId = feedIdFor(feed.feed);
-  console.log(`Creating ${args.kind} market on ${args.feed}: lower=${args.lower} upper=${needsUpper ? args.upper : "-"} expiry=${args.expiry}`);
+  console.log(
+    `Creating ${args.kind} market on ${args.feed}: lower=${args.lower} upper=${needsUpper ? args.upper : "-"} expiry=${args.expiry}`,
+  );
   console.log(`Resolver ${resolverDeployment.address}, feedId ${feedId}, cost ${cost} tinybars`);
 
   const tx = await verdict.createMarket(resolverDeployment.address, feedId, kind, lower, upper, expiry, {

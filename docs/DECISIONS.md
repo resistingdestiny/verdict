@@ -14,6 +14,14 @@ Each entry is a decision the brief left open, a spike finding, or a cut, with on
 | 2026-10-02 | `IResolver` gains `feedDecimals(bytes32)` beyond the brief's two functions. | `createMarket` records the feed's decimals at creation and must learn them from the resolver, not from the caller. |
 | 2026-10-02 | The YES payout is a `uint64` of tinybars per whole token, 0 to 100,000,000. | Matches the brief's representation and fits the `int64` HTS boundary. |
 | 2026-10-02 | `MAX_LEAD` starts at 62 days pending spike 2. | HAPI long-term schedules expire at most about two months ahead; the furthest judged market is 28 days out. |
+| 2026-10-02 | Feed ids are the feed address right-padded to bytes32 (`feedIdFor` in `config/addresses.ts`). | Every stream must derive feedId the same way; the resolver registers feeds by address, so the address is the natural key. |
+| 2026-10-02 | `config/addresses.ts` was written by the router stream because core's copy had not landed. | The router's deploy script and testnet scripts need the addresses now; values come from the verified table in the brief. |
+| 2026-10-02 | VerdictRouter enforces slippage with its own `Slippage` error and passes 0 as `amountOutMin` to SaucerSwap. | The interface forbids raw revert strings, and SaucerSwap reverts its insufficient-output check with a string. |
+| 2026-10-02 | VerdictRouter asserts a literal zero HBAR and token balance after every trade. | Follows the brief exactly; HBAR force-sent to the router would block trades, which is accepted because the router is replaceable and holds nothing by design. |
+| 2026-10-02 | In `Traded`, `amountOut` is the main receive and `refund` the extra HBAR: for buyNo the YES-leg proceeds, for sellNo the unspent HBAR. | Keeps one event shape for all four trades while making every HBAR movement visible. |
+| 2026-10-02 | Mock LP tokens are internal accounting on the pair, not HTS tokens. | The router never touches LP tokens; the association problem for contract-held LP is the series stream's spike 7. |
+| 2026-10-02 | The mock SaucerSwap router supports only two-address paths. | Verdict markets only ever trade YES against WHBAR; longer paths are dead code in a mock. |
+| 2026-10-02 | Mocha timeout raised to 600s in `hardhat.config.ts`, and the router test fixture deploys once and reverts to a snapshot per test. | Load average on the shared box passed 100 during the build; mock-heavy fixtures timed out at 120s and redeploying per test multiplied the cost. |
 
 ## Spike findings
 
