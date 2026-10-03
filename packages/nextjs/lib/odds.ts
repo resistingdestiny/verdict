@@ -56,7 +56,6 @@ export function pointsFromSyncLogs(logs: readonly SyncLog[], yesFirst: boolean):
 }
 
 type MirrorLog = { data: Hex; topics: Hex[]; timestamp: string };
-type MirrorLogsPage = { logs?: MirrorLog[]; links?: { next?: string | null } };
 
 /** Decode one mirror node log entry into a `SyncLog`, or null when it is not a Sync event. */
 export function decodeSyncLog(log: MirrorLog): SyncLog | null {
@@ -71,27 +70,18 @@ export function decodeSyncLog(log: MirrorLog): SyncLog | null {
 }
 
 /**
- * Read a pair's `Sync` history from the mirror node. The JSON-RPC relay caps `eth_getLogs` to a short block
- * range, so the mirror node's contract log endpoint is the only way to read a pool's whole history.
+ * Read a pair's `Sync` history through the app's `/api/mirror/sync` route. The JSON-RPC relay caps
+ * `eth_getLogs` to a short block range, and the mirror node only accepts topic filters with a bounded
+ * timestamp window, so the server reads the pair's logs and matches the topic; the browser gets one 200.
  */
-export async function fetchSyncHistory(
-  mirrorBase: string,
-  pair: Address,
-  yesFirst: boolean,
-  maxPages = 5,
-): Promise<OddsPoint[]> {
+export async function fetchSyncHistory(pair: Address, yesFirst: boolean): Promise<OddsPoint[]> {
+  const response = await fetch(`/api/mirror/sync?pair=${pair}`);
+  if (!response.ok) throw new Error(`sync history ${response.status} for ${pair}`);
+  const body = (await response.json()) as { logs?: Pick<MirrorLog, "data" | "topics" | "timestamp">[] };
   const logs: SyncLog[] = [];
-  let url: string | null =
-    `${mirrorBase}/api/v1/contracts/${pair}/results/logs?topic0=${SYNC_TOPIC}&order=asc&limit=100`;
-  for (let page = 0; url && page < maxPages; page++) {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`mirror node ${response.status} for ${pair} logs`);
-    const body = (await response.json()) as MirrorLogsPage;
-    for (const log of body.logs ?? []) {
-      const sync = decodeSyncLog(log);
-      if (sync) logs.push(sync);
-    }
-    url = body.links?.next ? `${mirrorBase}${body.links.next}` : null;
+  for (const log of body.logs ?? []) {
+    const sync = decodeSyncLog(log as MirrorLog);
+    if (sync) logs.push(sync);
   }
   return pointsFromSyncLogs(logs, yesFirst);
 }

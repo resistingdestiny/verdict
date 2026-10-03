@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { Address } from "viem";
 import { useReadContract } from "wagmi";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
-import { ZERO_ADDRESS, htsTokenAbi, isAssociatedOnMirror, isZeroAddress, mirrorNodeBase } from "~~/lib/hts";
+import { ZERO_ADDRESS, htsTokenAbi, isAssociatedOnMirror, isZeroAddress } from "~~/lib/hts";
 import scaffoldConfig from "~~/scaffold.config";
 
 type TokenStateArgs = {
@@ -43,7 +43,7 @@ export function useTokenState({ token, owner, spender }: TokenStateArgs) {
     enabled,
     retry: 1,
     staleTime: 15_000,
-    queryFn: () => isAssociatedOnMirror(mirrorNodeBase(targetNetwork.id), owner as Address, token as Address),
+    queryFn: () => isAssociatedOnMirror(owner as Address, token as Address),
   });
 
   let associated: boolean | undefined = association.data;

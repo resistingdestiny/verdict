@@ -68,26 +68,16 @@ export function hashscanUrl(network: HederaNetworkName, kind: HashScanKind, valu
   }
 }
 
-/** Mirror node base URL for a chain. `NEXT_PUBLIC_MIRROR_NODE_URL` overrides the public one. */
-export function mirrorNodeBase(chainId: number | undefined): string {
-  const override = process.env.NEXT_PUBLIC_MIRROR_NODE_URL;
-  if (override) return override.replace(/\/$/, "");
-  return `https://${networkName(chainId)}.mirrornode.hedera.com`;
-}
-
-type MirrorTokensPage = { tokens?: { token_id: string }[] };
-
 /**
- * Whether `account` is associated with `token`, from the mirror node. A 404 means the account has never
- * been seen by the network, so it cannot be associated either. Throws on other failures so callers can
- * fall back to a balance read.
+ * Whether `account` is associated with `token`, answered by the app's `/api/mirror/association` route, which
+ * asks the mirror node on the server. An account the network has never seen (a fresh burner wallet) is
+ * reported as not associated. Throws on other failures so callers can fall back to a balance read.
  */
-export async function isAssociatedOnMirror(mirrorBase: string, account: Address, token: Address): Promise<boolean> {
+export async function isAssociatedOnMirror(account: Address, token: Address): Promise<boolean> {
   const tokenId = longZeroToEntityId(token);
   if (!tokenId) throw new Error(`${token} is not an HTS token address`);
-  const response = await fetch(`${mirrorBase}/api/v1/accounts/${account}/tokens?token.id=${tokenId}&limit=1`);
-  if (response.status === 404) return false;
-  if (!response.ok) throw new Error(`mirror node ${response.status} for ${account} tokens`);
-  const body = (await response.json()) as MirrorTokensPage;
-  return (body.tokens ?? []).some(entry => entry.token_id === tokenId);
+  const response = await fetch(`/api/mirror/association?account=${account}&token=${token}`);
+  if (!response.ok) throw new Error(`association lookup ${response.status} for ${account}`);
+  const body = (await response.json()) as { associated: boolean };
+  return body.associated;
 }

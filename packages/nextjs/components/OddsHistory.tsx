@@ -7,7 +7,6 @@ import { useQuery } from "@tanstack/react-query";
 import type { Address } from "viem";
 import { useScaffoldReadContract, useTargetNetwork } from "~~/hooks/scaffold-hbar";
 import { formatPercent, formatUtc } from "~~/lib/format";
-import { mirrorNodeBase } from "~~/lib/hts";
 import { fetchSyncHistory, yesIsToken0 } from "~~/lib/odds";
 
 type OddsHistoryProps = {
@@ -33,7 +32,7 @@ export const OddsHistory = ({ pair, yes }: OddsHistoryProps) => {
     enabled: Boolean(pair) && yesFirst !== undefined,
     refetchInterval: 30_000,
     retry: 1,
-    queryFn: () => fetchSyncHistory(mirrorNodeBase(targetNetwork.id), pair as Address, yesFirst as boolean),
+    queryFn: () => fetchSyncHistory(pair as Address, yesFirst as boolean),
   });
 
   if (!pair) return <EmptyState title="No pool yet" body="The odds history starts with the first liquidity." />;

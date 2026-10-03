@@ -1,37 +1,43 @@
 # Evidence
 
-One HashScan link per step of the market lifecycle on the reference deployment, Hedera testnet. The e2e run (`packages/hardhat/scripts/e2e-testnet.ts`) appends the transaction ids as it goes; until it runs, every link below reads "added during the testnet run". Links point at `https://hashscan.io/testnet`.
+One HashScan link per step of the market lifecycle on the reference deployment, Hedera testnet. The hand-written tables at the top summarise; the sections "Testnet run log", "Reference markets created" and "Verified contracts" below are appended by the scripts (`e2e-testnet`, `reference-deployment`, `verify-all`) with one row per transaction, its id, gas and HBAR charged. Links point at `https://hashscan.io/testnet`.
 
 ## Contract deployments
 
-| Contract | Address | HashScan | Verified |
-| --- | --- | --- | --- |
-| `Verdict` | added during the testnet run | added during the testnet run | added during the testnet run |
-| `ChainlinkResolver` | added during the testnet run | added during the testnet run | added during the testnet run |
-| `VerdictRouter` | added during the testnet run | added during the testnet run | added during the testnet run |
-| `VerdictSeries` (stretch) | added during the testnet run | added during the testnet run | added during the testnet run |
-| `GuardedResolver` (stretch) | added during the testnet run | added during the testnet run | added during the testnet run |
+Two deployments exist on Hedera testnet. Deployment v1 ran the first full lifecycle and exposed the scheduled-run timing defect described in `docs/SECURITY.md` (its market 0 deferred with "not expired", its market 1 settled on schedule). Deployment v2 carries the fix and holds the judged reference markets; the app points at v2. `ChainlinkResolver` is shared.
+
+| Contract | Deployment | Address | HashScan | Verified |
+| --- | --- | --- | --- | --- |
+| `Verdict` | v2 (current) | `0x6356954dd331b19F5228F2EdF6029951416C6774` | [contract](https://hashscan.io/testnet/contract/0x6356954dd331b19F5228F2EdF6029951416C6774), [deploy tx](https://hashscan.io/testnet/transaction/0x94ada56fbe1979f592c618579b03a3b493325d4667813af8ed021b35afb8f0d6) | Sourcify exact match |
+| `VerdictRouter` | v2 (current) | `0xE7fa06DD77F0F514c6313F57b02427734d3B84DB` | [contract](https://hashscan.io/testnet/contract/0xE7fa06DD77F0F514c6313F57b02427734d3B84DB), [deploy tx](https://hashscan.io/testnet/transaction/0x5c927fbdb8548241c9ad212b39e611398917f0bb82410ef9f968a54c8a45c4ce) | Sourcify exact match |
+| `ChainlinkResolver` | v1 and v2 | `0x4813A2028700B85f6529F76e2a276ad141b8c1B0` | [contract](https://hashscan.io/testnet/contract/0x4813A2028700B85f6529F76e2a276ad141b8c1B0), [deploy tx](https://hashscan.io/testnet/transaction/0x5d2ae6e0a9c0648b76e04e87e54574eb3dd9fcab5cc5980e546f9129a01416f9) | Sourcify exact match |
+| `Verdict` | v1 | `0x51c0810324931151bA31db317F23810040e0a250` | [contract](https://hashscan.io/testnet/contract/0x51c0810324931151bA31db317F23810040e0a250), [deploy tx](https://hashscan.io/testnet/transaction/0x8427d7f69a6801c4c6c3d5c227d7d38fd723e7d2711a849c120d30b67bd89a5b) | Sourcify exact match |
+| `VerdictRouter` | v1 | `0x14787283fb39Dc4f2524ec1Bc4c69568137378ae` | [contract](https://hashscan.io/testnet/contract/0x14787283fb39Dc4f2524ec1Bc4c69568137378ae), [deploy tx](https://hashscan.io/testnet/transaction/0x6a5aad55e31c4153df3e7cd5d9ee1a51733bbbcce4994154521d5c3c2932b31d) | Sourcify exact match |
+| HCS topic | v2 (current) | `0.0.10844607` | [topic](https://hashscan.io/testnet/topic/0.0.10844607) | |
+| HCS topic | v1 | `0.0.10844224` | [topic](https://hashscan.io/testnet/topic/0.0.10844224) | |
+| `VerdictSeries` (stretch) | cut | | | |
+| `GuardedResolver` (stretch) | cut | | | |
 
 ## Lifecycle, one market end to end
 
-| Step | HashScan link | What to look at |
-| --- | --- | --- |
-| Market creation | added during the testnet run | Both HTS token creations visible on the transaction |
-| Schedule entity for the market | added during the testnet run | The scheduled `resolveScheduled` call and its expiry second |
-| Split | added during the testnet run | YES and NO minted against HBAR paid |
-| Pool creation | added during the testnet run | `addLiquidityETHNewPool` and the `pairCreateFee` |
-| `buyYes` | added during the testnet run | HBAR in, YES out |
-| `sellYes` | added during the testnet run | YES in, HBAR out |
-| `buyNo` | added during the testnet run | Split and YES sale in one transaction |
-| `sellNo` | added during the testnet run | YES purchase and merge in one transaction |
-| Scheduled execution of `resolveScheduled` | added during the testnet run | No account sent the transaction; the schedule executed it |
-| Redemption, binary market | added during the testnet run | Tokens burned, payout at 0 or 1 HBAR |
-| Redemption, scalar market | added during the testnet run | Payout at a fraction of 1 HBAR |
-| HCS topic | added during the testnet run | The topic holding the public record |
-| HCS message: market created | added during the testnet run | Terms message, under 1 KB |
-| HCS message: market settled | added during the testnet run | Settlement reading and round |
-| Contract balance before the scheduled run | added during the testnet run | Balance equals collateral plus reserves |
-| Contract balance after the scheduled run | added during the testnet run | Collateral untouched; only the reserve was spent |
+Market 1 of deployment v1 (HBAR / USD Above, 10 minutes, created 2026-10-03 16:07 UTC) went through every step. The rows under "Testnet run log" below carry one HashScan link per step with the gas and HBAR charged; the headline links are:
+
+| Step | HashScan |
+| --- | --- |
+| Market creation, both token creations inside it | [transaction](https://hashscan.io/testnet/transaction/0x68ca5a02728af38e89a7645034d4927b65c50eb4dbf989807c0d3309030fd106), [YES token](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000a57865), [NO token](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000a57866) |
+| Schedule entity for the market | [schedule 0.0.10844263](https://hashscan.io/testnet/schedule/0.0.10844263) |
+| Split 20 HBAR | [transaction](https://hashscan.io/testnet/transaction/0x2f282fd6589ee5cd2e8f6bcb0352ddc7387e45713f12058e335621a19204e909) |
+| Pool creation and seed (SaucerSwap V1) | [transaction](https://hashscan.io/testnet/transaction/0xde69fff7d218077dac7ff0c80e2f53d59e55d3dc053be1fe55ebe70d70b8f9d7), [pair](https://hashscan.io/testnet/contract/0x56Fcd027F68abab3F6DfE5043b23946376169CEe) |
+| buyYes | [transaction](https://hashscan.io/testnet/transaction/0xe5d348f1a26e098f518c11c589361f1de789d7cbc0efb958e9a3dc6cd69f22e8) |
+| sellYes | [transaction](https://hashscan.io/testnet/transaction/0x98b8ad1437037e86563591f2248a9da47e78f9ed1053385f91e294b91e61e28e) |
+| buyNo | [transaction](https://hashscan.io/testnet/transaction/0x928a01c7ab8d5f9d93e03e56c99cf5cf06a23db8fcad99f3a7f9a68a1b288f3f) |
+| sellNo | [transaction](https://hashscan.io/testnet/transaction/0x5096f0b3b7226611f2ca4437711419643b1c89269dee3f808b60b43fdb905d02) |
+| Scheduled execution of `resolveScheduled`, no account sent it (payer is the contract) | [scheduled transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791043635-186867339), [schedule](https://hashscan.io/testnet/schedule/0.0.10844263) |
+| Contract balance before and after the scheduled run, collateral untouched | 30.00000000 HBAR before, 29.79815396 after; collateral 20.00000000 HBAR both times ([contract](https://hashscan.io/testnet/contract/0x51c0810324931151bA31db317F23810040e0a250)) |
+| Redemption in a binary market (YES at 1 HBAR, NO at 0) | [transaction](https://hashscan.io/testnet/transaction/0x080c12a9564a24d9e33d2a3730e2a1ce2c8a4bd94015c1b912331599de690143) |
+| HCS messages for creation and settlement | [topic 0.0.10844224](https://hashscan.io/testnet/topic/0.0.10844224), messages 2 (`market_created`) and 4 (`market_settled`) |
+
+A redemption in a scalar market is added once a scalar market has settled (deployment v2 market 2 settles on 30 October 2026).
 
 ## Reference markets
 
@@ -39,13 +45,13 @@ The reference deployment holds markets of every kind and in every state, so a fr
 
 | Market | Kind | Expiry | Purpose | Market id |
 | --- | --- | --- | --- | --- |
-| HBAR/USD, strike below spot | Above | 30 minutes after creation | Settles with YES paid in full during the build | added during the testnet run |
-| HBAR/USD, strike above spot | Above | 30 minutes after creation | Settles with NO paid in full during the build | added during the testnet run |
-| HBAR/USD, range around spot | Scalar | 30 minutes after creation | Settles at a fractional payout during the build | added during the testnet run |
-| BTC/USD, strike at spot | Below | 2026-10-09 16:00 UTC | Settles itself in the middle of judging | added during the testnet run |
-| ETH/USD, range around spot | Between | 2026-10-14 16:00 UTC | Settles itself late in judging | added during the testnet run |
-| HBAR/USD, range around spot | Scalar | 2026-10-30 16:00 UTC | Stays open through the announcement | added during the testnet run |
-| HBAR/USD daily series (stretch) | Above, struck at the last settlement | Rolls every 24 hours | A new market appears each day of judging | added during the testnet run |
+| HBAR/USD, strike below spot | Above | 30 minutes after creation | Settles with YES paid in full during the build | v1 market 1 (settled on schedule, see above); v2 copy pending the next HBAR refill |
+| HBAR/USD, strike above spot | Above | 30 minutes after creation | Settles with NO paid in full during the build | v1 market 3 (see deployment v1 rows); v2 copy pending the next HBAR refill |
+| HBAR/USD, range around spot | Scalar | 30 minutes after creation | Settles at a fractional payout during the build | v1 market 4 (see deployment v1 rows); v2 copy pending the next HBAR refill |
+| BTC/USD, strike 5 percent above spot | Below | 2026-10-09 16:00 UTC | Settles itself in the middle of judging | v2 market 0, [creation](https://hashscan.io/testnet/transaction/0x8945ad9b8d59bf445075013f229a73bb29ce2878df79723b3b3357b122f42eb1) |
+| ETH/USD, range 10 percent around spot | Between | 2026-10-14 16:00 UTC | Settles itself late in judging | v2 market 1, [creation](https://hashscan.io/testnet/transaction/0xcac514cc68448a6d301d1606025619778a20c3cdc873c6bae7d018b71fc2ea15) |
+| HBAR/USD, range 20 percent around spot | Scalar | 2026-10-30 16:00 UTC | Stays open through the announcement | v2 market 2, [creation](https://hashscan.io/testnet/transaction/0x738e8e5725f674c89a1de53ff1f4e8248f4d092dba8a89934bb7c02c46411185) |
+| HBAR/USD daily series (stretch) | Above, struck at the last settlement | Rolls every 24 hours | A new market appears each day of judging | cut, see docs/DECISIONS.md |
 
 ## Series rolls (stretch)
 
@@ -53,9 +59,7 @@ Three consecutive unattended rolls, if the series ships.
 
 | Roll | Close | Open | Seed |
 | --- | --- | --- | --- |
-| 1 | added during the testnet run | added during the testnet run | added during the testnet run |
-| 2 | added during the testnet run | added during the testnet run | added during the testnet run |
-| 3 | added during the testnet run | added during the testnet run | added during the testnet run |
+| 1 to 3 | cut: the series was not built, see `docs/DECISIONS.md` | | |
 
 ## Verified contracts
 
