@@ -65,6 +65,20 @@ contract MockHtsToken {
         return true;
     }
 
+    // ---------------------------------------------------------------- HIP-719 association facade
+
+    /// @notice Associate the caller with this token, as `IHRC719.associate()` does on Hedera.
+    function associate() external returns (uint256 responseCode) {
+        if (associated[msg.sender]) return uint256(uint64(HederaCodes.TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT));
+        associated[msg.sender] = true;
+        return uint256(uint64(HederaCodes.SUCCESS));
+    }
+
+    /// @notice True when the caller is associated with this token.
+    function isAssociated() external view returns (bool) {
+        return associated[msg.sender];
+    }
+
     // ---------------------------------------------------------------- privileged, from the HTS mock
 
     function sysMint(uint256 amount) external onlyHts {
@@ -91,7 +105,12 @@ contract MockHtsToken {
         return _move(from, to, amount);
     }
 
-    function sysTransferFrom(address from, address spender, address to, uint256 amount) external onlyHts returns (int64) {
+    function sysTransferFrom(
+        address from,
+        address spender,
+        address to,
+        uint256 amount
+    ) external onlyHts returns (int64) {
         int64 code = _spendAllowance(from, spender, amount);
         if (code != HederaCodes.SUCCESS) return code;
         return _move(from, to, amount);
@@ -268,7 +287,12 @@ contract MockHederaTokenService {
         return MockHtsToken(token).sysTransfer(sender, receiver, uint256(uint64(amount)));
     }
 
-    function transferFrom(address token, address from, address to, uint256 amount) external returns (int64 responseCode) {
+    function transferFrom(
+        address token,
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (int64 responseCode) {
         if (!isHtsToken[token]) return HederaCodes.INVALID_TOKEN_ID;
         return MockHtsToken(token).sysTransferFrom(from, msg.sender, to, amount);
     }
