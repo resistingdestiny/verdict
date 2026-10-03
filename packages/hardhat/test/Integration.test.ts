@@ -1,6 +1,5 @@
 import { expect } from "chai";
-import { artifacts, ethers } from "hardhat";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { artifacts, ethers, network } from "hardhat";
 import type { MockHtsToken, MockSaucerSwapPair } from "../typechain-types";
 import { now, ONE_HBAR, setTime } from "./helpers/hedera";
 import { createMarket, expectInvariants, Kind, pushRound, RESERVE, Status } from "./helpers/verdict";
@@ -65,8 +64,26 @@ describe("Integration: VerdictRouter against Verdict", function () {
     }
   }
 
-  beforeEach(function () {
+  // One deployment for the file, a snapshot per test, and the chain restored afterwards so the fixtures
+  // of later files do not inherit this one's HTS mock state.
+  let f: Fixture;
+  let clean: string;
+  let base: string;
+
+  before(async function () {
+    clean = await network.provider.send("evm_snapshot", []);
+    f = await deployWithSeededMarket();
+    base = await network.provider.send("evm_snapshot", []);
+  });
+
+  beforeEach(async function () {
+    await network.provider.send("evm_revert", [base]);
+    base = await network.provider.send("evm_snapshot", []);
     fixedPayout = undefined;
+  });
+
+  after(async function () {
+    await network.provider.send("evm_revert", [clean]);
   });
 
   it("Verdict's bytecode holds no DEX or allowance selector (invariant 6)", async function () {
@@ -77,7 +94,6 @@ describe("Integration: VerdictRouter against Verdict", function () {
   });
 
   it("seeds the pool at an even price and leaves the creator holding the NO leg", async function () {
-    const f = await loadFixture(deployWithSeededMarket);
     expect(await f.router.impliedProbability(f.id)).to.equal(ONE_HBAR / 2n);
     expect(await f.router.reserves(f.id)).to.deep.equal([SEED_YES, SEED_HBAR]);
     expect(await f.yes.balanceOf(f.alice.address)).to.equal(0n);
@@ -87,7 +103,6 @@ describe("Integration: VerdictRouter against Verdict", function () {
   });
 
   it("runs all four trades, settles through the schedule and redeems every leg", async function () {
-    const f = await loadFixture(deployWithSeededMarket);
     const { verdict, router, hss, feed, alice, bob, owner, id, expiry, yes, no } = f;
     const deadline = (await now()) + 3600n;
 
@@ -200,7 +215,6 @@ describe("Integration: VerdictRouter against Verdict", function () {
   });
 
   it("voids a market with no fresh reading and the router's sellNo still merges at 0.5 HBAR", async function () {
-    const f = await loadFixture(deployWithSeededMarket);
     const { verdict, router, bob, id, expiry, no } = f;
     const deadline = (await now()) + 3600n;
     await router.connect(bob).buyNo(id, 0n, deadline, { value: ONE_HBAR });

@@ -56,7 +56,8 @@ contract ChainlinkResolver is IResolver {
         Feed memory feed = _feeds[feedId];
         if (address(feed.aggregator) == address(0)) return (false, 0, 0, 0, 0);
 
-        uint256 published;
+        uint256 published = 0;
+        // slither-disable-next-line unused-return
         try feed.aggregator.latestRoundData() returns (uint80 r, int256 a, uint256, uint256 u, uint80) {
             (roundId, answer, published) = (r, a, u);
         } catch {
@@ -65,6 +66,7 @@ contract ChainlinkResolver is IResolver {
 
         uint256 steps = 0;
         while (published > time && steps < MAX_WALK) {
+            // slither-disable-next-line unused-return
             try feed.aggregator.getRoundData(roundId - 1) returns (uint80 r, int256 a, uint256, uint256 u, uint80) {
                 (roundId, answer, published) = (r, a, u);
             } catch {
