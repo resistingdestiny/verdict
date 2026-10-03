@@ -1,70 +1,65 @@
-# Hardhat package (Hedera)
+# Hardhat package
 
-Hardhat config, contracts, deploy scripts, tests, and Hashscan verification for this monorepo.
+Contracts, deploy scripts, tests and HashScan verification for Verdict.
+
+- `contracts/Verdict.sol`: markets, outcome tokens, collateral, settlement, redemption
+- `contracts/VerdictRouter.sol`: the four trades against SaucerSwap, one transaction each
+- `contracts/resolvers/ChainlinkResolver.sol`: the Chainlink reading current at a given time
+- `contracts/interfaces/`: `IVerdict.sol`, `IResolver.sol`, `IVerdictRouter.sol`, frozen
+- `contracts/mocks/`: HTS, HSS and Chainlink test doubles used by the test suite
+- `contracts/libraries/HederaCodes.sol`: the HAPI response codes used at the system contract boundary
+- `config/addresses.ts`: the only file with hard-coded external addresses, each with its source URL and the date checked
+- `deploy/`: hardhat-deploy scripts; they also create the HCS topic when operator credentials are set
+- `scripts/`: `create-market`, `seed-pool`, `e2e-testnet`, `record-sync`, `agent-trade`, `evidence` and throwaway `spikes/`
+- `test/`: contract tests; `test/helpers/hedera.ts` installs the mocks at `0x167` and `0x16b` with `hardhat_setCode`
 
 ## Local development
 
-From the repo root, use the explicit `hardhat:*` scripts for this package. Inside `packages/hardhat`, use the unprefixed package-local scripts.
+From the repo root, use the `hardhat:*` scripts. Inside this package, use the unprefixed package-local scripts.
 
-1. **Start the local chain** (terminal 1, from repo root):
-   ```bash
-   yarn hardhat:chain
-   ```
-   This starts `hardhat node` with **Hedera testnet forking** (`HEDERA_FORKING=true` and `@hashgraph/system-contracts-forking`). JSON-RPC is served at **http://127.0.0.1:8545**.
+Run the tests (hermetic, on the plain Hardhat network with the mocks installed):
 
-2. **Deploy to the running fork** (terminal 2):
-   ```bash
-   yarn hardhat:deploy --network localhost
-   ```
-   Use **`localhost`** so Hardhat connects to the long-running node on port 8545.
+```bash
+yarn hardhat:test
+yarn hardhat:test test/Verdict.test.ts
+```
 
-   **`yarn hardhat:deploy` without `--network localhost`** uses the default network `hardhat`, which is the **in-process ephemeral** Hardhat network—**not** the same process as `yarn hardhat:chain`. For deploys against the forked node you started in step 1, always pass **`--network localhost`** while that node is running.
+The tests do not use the forking plugin: it emulates HTS but not HSS, and the suite needs to execute a scheduled call at a chosen time, which the HSS mock allows.
 
-3. **Run contract tests** (from repo root; tests use `HEDERA_FORKING=true` and can run against the fork or standalone):
-   ```bash
-   yarn hardhat:test
-   ```
+Local fork workflow:
 
-## Deploy and verify on Hedera testnet/mainnet
+```bash
+# terminal 1
+yarn hardhat:chain
 
-You need a deployer account with HBAR on the target network. Without funds, deploy and verify will fail with "Sender account not found".
+# terminal 2
+yarn hardhat:deploy --network localhost
+```
 
-1. **Generate or import an account** (from the repo root):
-   ```bash
-   yarn hardhat:account:generate
-   ```
-   or
-   ```bash
-   yarn hardhat:account:import
-   ```
-   The encrypted key is stored in `packages/hardhat/.env`.
+`yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the node on port 8545.
 
-2. **Fund the account on testnet:**  
-   Use the [Hedera Portal faucet](https://portal.hedera.com/faucet) to receive testnet HBAR.
+## Deploy and verify on Hedera testnet
 
-3. **Deploy to Hedera testnet** (from repo root):
-   ```bash
-   yarn hardhat:deploy --network hederaTestnet
-   ```
-   or
-   ```bash
-   yarn hardhat:deploy --network hedera_testnet
-   ```
-   You will be prompted to enter the password to decrypt your deployer key.
+You need a deployer account with testnet HBAR. Without funds, deploy and verify fail with "Sender account not found".
 
-4. **Verify on Sourcify** (shows as verified on HashScan). Uses the solc standard-json from `artifacts/build-info` and submits directly to the Sourcify API v2 — `@nomicfoundation/hardhat-verify` is not used because its Hardhat 2-compatible line only speaks the removed Sourcify API v1:
-   ```bash
-   yarn hardhat:verify -- HederaToken testnet                          # address from deployments/hederaTestnet/
-   yarn hardhat:verify -- HederaToken testnet 0xYourContractAddress    # explicit address
-   ```
-   Use `mainnet` instead of `testnet` for chain 295.
+```bash
+yarn hardhat:account:generate   # or yarn hardhat:account:import
+yarn hardhat:deploy --network hederaTestnet
+```
 
-## Layout
+The encrypted key lives in `packages/hardhat/.env`, which is git-ignored. Fund the account at [portal.hedera.com](https://portal.hedera.com/faucet).
 
-- `contracts/` — Solidity sources
-- `deploy/` — hardhat-deploy scripts (e.g. `00_deploy_hedera_token.ts`)
-- `scripts/` — generateAccount, importAccount, verifySourcify.ts, etc.
-- `test/` — contract tests
-- `hardhat.config.ts` — networks (`hardhat`, `localhost` for RPC at 127.0.0.1:8545, `hederaTestnet`, `hederaMainnet`)
+Verify on Sourcify so HashScan shows the source. The verify script submits to the Sourcify API v2 directly, because the Hardhat 2 line of `hardhat-verify` speaks only the removed API v1:
 
-Network and RPC URLs are in `hardhat.config.ts`. Deployer key is read from `.env` (encrypted) and decrypted at deploy time for live networks.
+```bash
+yarn hardhat:verify -- Verdict testnet
+yarn hardhat:verify -- Verdict testnet 0xYourContractAddress
+```
+
+## The testnet run
+
+`scripts/e2e-testnet.ts` is run by hand and never in CI. It creates a 10-minute market, splits, seeds the pool, makes all four trades, waits for the scheduled resolution, redeems, writes the HCS record and appends every transaction id to `docs/EVIDENCE.md`.
+
+## Networks
+
+Networks and RPC URLs are in `hardhat.config.ts`: `hardhat`, `localhost` (the fork on 127.0.0.1:8545), `hederaTestnet` (296) and `hederaMainnet` (295). This template stays on testnet. The deployer key is read from `.env` and decrypted at deploy time for live networks.
