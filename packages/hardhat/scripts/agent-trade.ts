@@ -44,8 +44,19 @@ function loadInterfaceAbi(name: string): ethers.InterfaceAbi {
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-  const data = (await res.json()) as T & { error?: string };
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  } catch (e) {
+    throw new Error(`Could not reach ${url}: ${e instanceof Error ? e.message : String(e)}. Is the app running?`);
+  }
+  const text = await res.text();
+  let data: T & { error?: string };
+  try {
+    data = JSON.parse(text) as T & { error?: string };
+  } catch {
+    throw new Error(`${url} did not return JSON (status ${res.status}). Is the Verdict app running at VERDICT_APP_URL?`);
+  }
   if (!res.ok) throw new Error(`${url} answered ${res.status}: ${data.error ?? res.statusText}`);
   return data;
 }

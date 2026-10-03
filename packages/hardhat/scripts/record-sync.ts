@@ -234,10 +234,27 @@ async function buildMarketSettled(id: bigint, market: MarketView, verdictAddress
 
 // --- the two modes ---
 
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(30_000), ...init });
+  } catch (e) {
+    throw new Error(`Could not reach ${url}: ${e instanceof Error ? e.message : String(e)}. Is the app running?`);
+  }
+  const text = await res.text();
+  let data: T & { error?: string };
+  try {
+    data = JSON.parse(text) as T & { error?: string };
+  } catch {
+    throw new Error(`${url} did not return JSON (status ${res.status}). Is the Verdict app running at VERDICT_APP_URL?`);
+  }
+  if (!res.ok) throw new Error(`${url} answered ${res.status}: ${data.error ?? res.statusText}`);
+  return data;
+}
+
 async function syncViaApi(topicId: string): Promise<void> {
-  const res = await fetch(`${APP_URL}/api/markets`, { signal: AbortSignal.timeout(15_000) });
-  const data = (await res.json()) as { markets?: { id: number; status: string }[]; error?: string };
-  if (!res.ok || !data.markets) throw new Error(`/api/markets failed: ${data.error ?? res.status}`);
+  const data = await fetchJson<{ markets?: { id: number; status: string }[] }>(`${APP_URL}/api/markets`);
+  if (!data.markets) throw new Error("/api/markets returned no markets array");
 
   const keys = await existingKeys(topicId);
   const missing = data.markets.filter(
@@ -247,15 +264,11 @@ async function syncViaApi(topicId: string): Promise<void> {
   );
   console.log(`${missing.length} market(s) with missing record messages.`);
   for (const m of missing) {
-    const post = await fetch(`${APP_URL}/api/record`, {
+    const result = await fetchJson<{ written?: unknown[]; detail?: string }>(`${APP_URL}/api/record`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ marketId: m.id }),
-      signal: AbortSignal.timeout(30_000),
     });
-    const result = (await post.json()) as { written?: unknown[]; error?: string; detail?: string };
-    if (!post.ok)
-      throw new Error(`Market ${m.id}: ${result.error ?? post.status}${result.detail ? ` (${result.detail})` : ""}`);
     console.log(`Market ${m.id}: wrote ${result.written?.length ?? 0} message(s).`);
   }
 }
