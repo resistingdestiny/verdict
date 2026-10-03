@@ -9,7 +9,7 @@ import { deployTrading, seedPool, type TradingContext } from "./helpers/trading"
 
 /**
  * Property test: random sequences of every state-changing action, across several markets, kinds and
- * accounts, with the brief's six invariants checked after every action.
+ * accounts, with the design's six invariants checked after every action.
  *
  * Runs only when VERDICT_PROPERTY=1 (`yarn hardhat:test:property`), so the unit suite stays fast. The
  * number of sequences is VERDICT_PROPERTY_RUNS, default 1000, and VERDICT_PROPERTY_SEED replays a run.

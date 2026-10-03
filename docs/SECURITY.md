@@ -52,7 +52,7 @@ If no fresh reading exists at expiry, nobody can resolve. Twenty-four hours afte
 
 ## Review findings
 
-An Opus reviewer read the contracts against the brief's invariants on 2026-10-03. Three medium and five low findings were fixed, each with a test; the decisions table in [docs/DECISIONS.md](DECISIONS.md) carries the reasoning.
+An Opus reviewer read the contracts against the design's invariants on 2026-10-03. Three medium and five low findings were fixed, each with a test; the decisions table in [docs/DECISIONS.md](DECISIONS.md) carries the reasoning.
 
 - **M1, router blocked by dust.** Any account could stop every trade by sending 1 tinybar (or one unit of YES or NO) to `VerdictRouter`, whose end-of-trade check demanded literal zero balances. Each trade now records the router's holdings at entry and reverts `RouterNotEmpty` only when it would leave more behind.
 - **M2, reserve released under a pending schedule.** A manual `resolve` or `voidMarket` released the market's reserve while its schedule was still pending; the later run, charged to Verdict as payer, could take the balance below collateral plus pending reserves after a sweep. Settlement and void now delete a pending schedule first.

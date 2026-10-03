@@ -32,7 +32,7 @@ const CODE_SCHEDULE_EXPIRY_BUSY = 370n;
 
 describe("Verdict", function () {
   describe("constants and construction", function () {
-    it("exposes the lead, delay and reserve constants the brief fixes", async function () {
+    it("exposes the lead, delay and reserve constants the design fixes", async function () {
       const { verdict } = await loadFixture(deployVerdict);
       expect(await verdict.MIN_LEAD()).to.equal(5n * 60n);
       expect(await verdict.MAX_LEAD()).to.equal(62n * DAY);
@@ -334,7 +334,7 @@ describe("Verdict", function () {
       },
     ];
     for (const table of tables) {
-      it(`${Kind[table.kind]} pays by the brief's rule at each bound, just either side, and the midpoint`, async function () {
+      it(`${Kind[table.kind]} pays by the design's rule at each bound, just either side, and the midpoint`, async function () {
         const { verdict } = await loadFixture(deployVerdict);
         for (const [answer, expected] of table.rows) {
           expect(await verdict.payoutFor(table.kind, table.lower, table.upper, answer), `answer ${answer}`).to.equal(

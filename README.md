@@ -8,6 +8,21 @@ npm create scaffold-hbar@latest -- --template resistingdestiny/verdict
 
 ![The Verdict market list on a fresh scaffold, before any deployment](docs/img/screenshots/home-light-1280.png)
 
+## Evidence at a glance
+
+Hedera testnet, deployment v2, all verified on Sourcify. The full table with gas and HBAR per step is in [docs/EVIDENCE.md](docs/EVIDENCE.md) and [docs/COSTS.md](docs/COSTS.md).
+
+| What | HashScan |
+| --- | --- |
+| `Verdict` (markets, HTS outcome tokens, HSS scheduling, collateral) | [0x6356954dd331b19F5228F2EdF6029951416C6774](https://hashscan.io/testnet/contract/0x6356954dd331b19F5228F2EdF6029951416C6774) |
+| `VerdictRouter` (four SaucerSwap trades in one transaction each) | [0xE7fa06DD77F0F514c6313F57b02427734d3B84DB](https://hashscan.io/testnet/contract/0xE7fa06DD77F0F514c6313F57b02427734d3B84DB) |
+| `ChainlinkResolver` (settlement reading at the expiry second) | [0x4813A2028700B85f6529F76e2a276ad141b8c1B0](https://hashscan.io/testnet/contract/0x4813A2028700B85f6529F76e2a276ad141b8c1B0) |
+| A market resolved by the Hedera Schedule Service with no account sending the transaction | [scheduled transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791047131-574357351), [schedule entity](https://hashscan.io/testnet/schedule/0.0.10844890) |
+| A scalar market settled by its schedule at a fractional payout (0.50006916 HBAR per YES) | [scheduled transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791047922-812032992) |
+| Pool creation on SaucerSwap V1 and a `buyNo` trade (split plus swap in one transaction) | [pool](https://hashscan.io/testnet/transaction/0xb1cd9fe3b016186056e871a219afe96b3bb8cbe2c24528333d676a000e189c74), [buyNo](https://hashscan.io/testnet/transaction/0x928a01c7ab8d5f9d93e03e56c99cf5cf06a23db8fcad99f3a7f9a68a1b288f3f) |
+| HCS record topic with `market_created` and `market_settled` messages | [topic 0.0.10844607](https://hashscan.io/testnet/topic/0.0.10844607) |
+| Markets open through judging: BTC / USD Below (9 Oct), ETH / USD Between (14 Oct), HBAR / USD Scalar (30 Oct) | shown live on the home page of a fresh scaffold |
+
 ## Quickstart
 
 You need Node 20.18.3 or later. Scaffold, install and start:
@@ -260,7 +275,7 @@ Problems hit during this build, with what caused them and what to do. If you hit
 | `.testnet-run.json belongs to 0x... on hederaTestnet, not ...` | The checkpoint from an earlier run was made by another deployer account. | Move `packages/hardhat/.testnet-run.json` aside to start a fresh run. Completed paid steps for the old account stay in the old file. |
 | `[wait] <step>: mirror lookup pending` repeats and the summary shows `cost pending` | The mirror node had not indexed the transaction within 45 seconds, or `HEDERA_MIRROR_URL` points somewhere unreachable. | Rerun the script: every paid step is skipped and the flush retries the lookups. The final flush writes the row with the hash alone so no step is lost. |
 | `e2e-testnet` reports `The schedule did not fire within 20 minutes of expiry` and resolves by hand | The HSS schedule for the market did not execute (capacity, an expiry second that was never reached, or a `ScheduleFailed` at creation). | The run already called `resolve(id)`; the evidence row says `manual resolve fallback`. Check the schedule entity on HashScan and record the finding in `docs/DECISIONS.md` under spike findings. |
-| `reference-deployment` exits with code 2 and `STOP: the deployer balance fell below 150 HBAR` | The brief's floor: no new market is created once the deployer holds less than 150 HBAR. | Fund the deployer and rerun; markets already created are skipped from the checkpoint. |
+| `reference-deployment` exits with code 2 and `STOP: the deployer balance fell below 150 HBAR` | The design's floor: no new market is created once the deployer holds less than 150 HBAR. | Fund the deployer and rerun; markets already created are skipped from the checkpoint. |
 | `verify-all` says `No artifacts/build-info` | Sourcify needs the exact compiler input, which only a compile in this checkout produces. | Run `yarn hardhat:compile` first, then `yarn hardhat:verify-all`. |
 | A test in `Verdict.test.ts` fails with `expected 4 to equal 2` on `hts.tokenCount()` when the whole suite runs, but passes alone. | `loadFixture` from hardhat-network-helpers runs a fixture it has not seen before on top of the current chain state, so a file that ran earlier and left HTS mock tokens behind leaks them into the next file's fixture. | Test files that deploy their own fixture take an `evm_snapshot` before deploying and revert to it in `after`, as `Integration.test.ts` and `Coverage.test.ts` do. |
 | `yarn hardhat:coverage` reports a branch in `VerdictRouter.reserves` as uncovered. | The `token0() == yes` arm needs a pair whose YES token has a lower address than WHBAR, which cannot happen on Hedera or in the mock pair. | Expected; the reason is recorded under Coverage in `docs/SECURITY.md`. |

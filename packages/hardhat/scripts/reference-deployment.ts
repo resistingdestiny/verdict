@@ -22,7 +22,7 @@ import {
  *
  *   yarn hardhat:reference-deployment
  *
- * Six markets from the brief's table, each with a 20 HBAR split and a pool of 20 YES against 10 HBAR.
+ * Six markets from the design's table, each with a 20 HBAR split and a pool of 20 YES against 10 HBAR.
  * Bounds come from the feed's spot at creation: strikes 5 percent below or above spot, Between ranges
  * plus or minus 10 percent, Scalar floor and cap plus or minus 20 percent. The three 30 minute
  * markets settle during the build; the dated ones settle during judging.

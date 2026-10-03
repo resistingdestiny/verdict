@@ -129,7 +129,7 @@ export async function pushRound(feed: MockAggregatorV3, answer: bigint, updatedA
 }
 
 /**
- * The brief's invariants 1 to 3: the balance covers collateral plus pending reserves; an open market's
+ * The design's invariants 1 to 3: the balance covers collateral plus pending reserves; an open market's
  * collateral equals both supplies; a settled market's collateral covers every outstanding redemption.
  */
 export async function expectInvariants(ctx: VerdictContext, ids: bigint[]): Promise<void> {
