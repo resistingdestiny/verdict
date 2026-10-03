@@ -155,6 +155,32 @@ describe("Verdict", function () {
       await expectInvariants(ctx, [0n, 1n, 2n]);
     });
 
+    it("measures the charge across token creation and scheduling and checks it against msg.value (review L3)", async function () {
+      const ctx = await loadFixture(deployVerdict);
+      const { verdict, hts, owner, alice, resolver, feedId } = ctx;
+      const expiry = (await now()) + HOUR;
+      // A high HTS fee that the token creation value exactly covers: the whole value is consumed, the
+      // creator is charged exactly creationCost and nothing comes back.
+      await verdict.connect(owner).setTokenCreateValue(3n * ONE_HBAR);
+      await hts.setCreateFee(3n * ONE_HBAR);
+      const cost = await verdict.creationCost();
+      expect(cost).to.equal(6n * ONE_HBAR + RESERVE);
+      await expect(
+        verdict.connect(alice).createMarket(resolver, feedId, Kind.Above, 1n, 0n, expiry, { value: cost }),
+      ).to.changeEtherBalances([alice, verdict, hts], [-cost, RESERVE, 6n * ONE_HBAR]);
+      // A fee above the value sent with each creation is refused by HTS itself (code 9) before any charge.
+      await hts.setCreateFee(3n * ONE_HBAR + 1n);
+      await expect(
+        verdict.connect(alice).createMarket(resolver, feedId, Kind.Above, 1n, 0n, expiry, { value: 2n * cost }),
+      )
+        .to.be.revertedWithCustomError(verdict, "HtsError")
+        .withArgs(CODE_INSUFFICIENT_TX_FEE);
+      // Nothing in the mocks can take more HBAR than the value sent with each call, so the measured charge
+      // can never exceed msg.value here. On Hedera it can if HSS charges the payer at scheduling time,
+      // which is the case the InsufficientValue check after the measurement guards.
+      await expectInvariants(ctx, [0n]);
+    });
+
     it("reverts InsufficientValue below creationCost and ResolverNotAllowed for a stranger resolver", async function () {
       const ctx = await loadFixture(deployVerdict);
       const { verdict, alice, bob, resolver, feedId, creationCost } = ctx;

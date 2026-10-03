@@ -114,9 +114,15 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         m.reserve = RESOLUTION_RESERVE;
         pendingReserves += RESOLUTION_RESERVE;
 
-        uint256 charge = _createTokens(m, id) + RESOLUTION_RESERVE;
+        // The charge is what the token creations and the scheduling actually consumed, measured across both
+        // from the balance, plus the reserve. It is checked against msg.value because the upfront cost is an
+        // estimate: the HTS fee is USD-denominated and HSS may charge the payer at scheduling time.
+        uint256 balanceBefore = address(this).balance;
+        _createTokens(m, id);
         // slither-disable-next-line reentrancy-eth
         m.schedule = _schedule(id, expiry);
+        uint256 charge = balanceBefore - address(this).balance + RESOLUTION_RESERVE;
+        if (charge > msg.value) revert InsufficientValue(charge, msg.value);
         _emitCreated(id, m);
 
         if (msg.value > charge) _pay(msg.sender, msg.value - charge);
@@ -327,15 +333,13 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
         if (expiry > latest) revert ExpiryTooFar(expiry, latest);
     }
 
-    /// @dev Creates YES and NO and returns the tinybars the two creations actually consumed, measured from
-    ///      the balance, so the creator pays the real HTS fee whatever `tokenCreateValue` is set to.
-    function _createTokens(Market storage m, uint256 id) private returns (uint256 consumed) {
+    /// @dev Creates YES and NO. What the two creations consumed is measured by the caller from the balance,
+    ///      so the creator pays the real HTS fee whatever `tokenCreateValue` is set to.
+    function _createTokens(Market storage m, uint256 id) private {
         string memory suffix = _decimal(id);
-        uint256 balanceBefore = address(this).balance;
         m.yes = _createToken(string.concat("Verdict YES ", suffix), string.concat("VYES", suffix));
         // slither-disable-next-line reentrancy-eth
         m.no = _createToken(string.concat("Verdict NO ", suffix), string.concat("VNO", suffix));
-        return balanceBefore - address(this).balance;
     }
 
     /// @dev One fungible HTS token with 8 decimals, this contract as treasury, supply key and auto-renew
