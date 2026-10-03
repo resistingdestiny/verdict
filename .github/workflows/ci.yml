@@ -53,6 +53,9 @@ jobs:
       - name: README scripts exist
         run: node scripts/check-readme-scripts.mjs
 
+      - name: template.json is valid
+        run: node scripts/check-template-json.mjs
+
   gitleaks:
     name: Secrets scan over full history
     runs-on: ubuntu-latest

@@ -50,7 +50,7 @@ jobs:
       - name: Required files exist
         working-directory: fresh
         run: |
-          for f in README.md AGENTS.md LICENSE template.json packages/hardhat/package.json packages/nextjs/package.json; do
+          for f in README.md AGENTS.md LICENSE packages/hardhat/package.json packages/nextjs/package.json .github/workflows/ci.yml; do
             test -f "$f" || { echo "missing $f"; exit 1; }
           done
           if git -C . rev-parse 2>/dev/null; then
