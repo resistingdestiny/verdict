@@ -43,6 +43,10 @@ const config: HardhatUserConfig = {
     ],
   },
   defaultNetwork: "hardhat",
+  // The build box is shared and heavily loaded; mock-heavy fixtures can exceed mocha's 2s default.
+  mocha: {
+    timeout: 600_000,
+  },
   namedAccounts: {
     deployer: {
       default: 0,

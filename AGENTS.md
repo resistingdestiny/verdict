@@ -29,7 +29,8 @@ packages/
                                 /api/*, /llms.txt
     components/
     contracts/deployedContracts.ts   committed reference testnet deployment
-    lib/                        feeds, format, hts, odds, payoff, verdict
+    lib/                        feeds, format, hts, mirror, odds, payoff, question, record, verdict
+    verdict.config.ts           HCS topic id, mirror node and HashScan URLs
 docs/                           ARCHITECTURE, TUTORIAL, SECURITY, COSTS, EVIDENCE, DECISIONS
 .harness/                       Hedera Harness recipe (spec, PRD, validators)
 .github/workflows/              ci.yml, fresh-scaffold.yml
@@ -77,6 +78,7 @@ yarn hardhat:account
 # Live networks (never mainnet for this template)
 yarn hardhat:deploy --network hederaTestnet
 yarn hardhat:verify -- Verdict testnet [0xAddress]
+yarn record:create-topic              # create the HCS record topic (needs operator env), writes verdict.config.ts
 
 # README script check (CI runs this; every command the docs name must exist in a package.json)
 node scripts/check-readme-scripts.mjs

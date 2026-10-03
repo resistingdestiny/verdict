@@ -68,7 +68,7 @@ yarn hardhat:test
 yarn hardhat:deploy --network hederaTestnet
 ```
 
-`yarn hardhat:account:generate` writes the encrypted key to `packages/hardhat/.env`; use `yarn hardhat:account:import` to bring an existing key. The deploy script deploys `Verdict`, `ChainlinkResolver` and `VerdictRouter`, creates the HCS topic when operator credentials are set, and writes the addresses to `packages/nextjs/contracts/deployedContracts.ts`. Verify the contracts so HashScan shows their source:
+`yarn hardhat:account:generate` writes the encrypted key to `packages/hardhat/.env`; use `yarn hardhat:account:import` to bring an existing key. The deploy script deploys `Verdict`, `ChainlinkResolver` and `VerdictRouter` and writes the addresses to `packages/nextjs/contracts/deployedContracts.ts`. When the operator credentials are set it also creates the HCS record topic and writes the topic id into `packages/nextjs/verdict.config.ts`; without them it skips that step, and you can create the topic later with `yarn record:create-topic`. Verify the contracts so HashScan shows their source:
 
 ```bash
 yarn hardhat:verify -- Verdict testnet
@@ -157,8 +157,8 @@ All four kinds share one mechanism; only the payoff rule differs. Bounds are sto
 | --- | --- | --- |
 | Hedera Token Service (HTS) | Creates the YES and NO tokens for every market, mints on split, burns on merge and redeem. The contract is treasury and holds the only supply key; there are no admin, freeze, KYC, wipe, pause or fee keys. | `packages/hardhat/contracts/Verdict.sol` |
 | Hedera Schedule Service (HSS) | Each market schedules its own `resolveScheduled` call at creation; the scheduled call fires at the expiry second with no keeper and no account sending it. | `packages/hardhat/contracts/Verdict.sol`, `packages/hardhat/contracts/interfaces/IHederaScheduleService.sol` |
-| Hedera Consensus Service (HCS) | One topic is the public record of every market's terms and settlement, written from chain data and readable by anyone. | `packages/nextjs/app/api/record`, `packages/hardhat/scripts/record-sync.ts` |
-| Mirror node | Serves every read the app cannot get from contract views: odds history from the pool's `Sync` events, association checks, the record feed and the transaction data behind record messages. | `packages/nextjs/lib/odds.ts`, `packages/nextjs/app/api/record` |
+| Hedera Consensus Service (HCS) | One topic is the public record of every market's terms and settlement, written from chain data and readable by anyone. | `packages/nextjs/app/api/record`, `packages/nextjs/app/record`, `packages/hardhat/scripts/record-sync.ts` |
+| Mirror node | Serves every read the app cannot get from contract views: odds history from the pool's `Sync` events, association checks, the record feed and the transaction data behind record messages. | `packages/nextjs/lib/mirror.ts`, `packages/nextjs/lib/odds.ts` |
 
 ## Why each integration is load-bearing
 
