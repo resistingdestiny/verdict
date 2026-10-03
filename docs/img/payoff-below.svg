@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 260" role="img" aria-label="Below payoff diagram: YES pays 1 HBAR when the price at expiry is below the strike, otherwise nothing. NO pays the complement.">
+  <g font-family="system-ui, sans-serif" font-size="12" fill="#6b7280">
+    <line x1="48" y1="24" x2="48" y2="220" stroke="#6b7280" stroke-width="1"/>
+    <line x1="48" y1="220" x2="464" y2="220" stroke="#6b7280" stroke-width="1"/>
+    <text x="42" y="28" text-anchor="end">1 HBAR</text>
+    <text x="42" y="224" text-anchor="end">0</text>
+    <text x="256" y="252" text-anchor="middle">price at expiry</text>
+    <line x1="256" y1="24" x2="256" y2="220" stroke="#6b7280" stroke-width="1" stroke-dasharray="4 4"/>
+    <text x="256" y="238" text-anchor="middle">strike</text>
+    <line x1="64" y1="40" x2="88" y2="40" stroke="#15803d" stroke-width="3"/>
+    <text x="94" y="44">YES</text>
+    <line x1="140" y1="40" x2="164" y2="40" stroke="#b91c1c" stroke-width="3"/>
+    <text x="170" y="44">NO</text>
+  </g>
+  <path d="M48,24 L256,24 L256,220 L464,220" fill="none" stroke="#15803d" stroke-width="3"/>
+  <path d="M48,220 L256,220 L256,24 L464,24" fill="none" stroke="#b91c1c" stroke-width="3"/>
+</svg>
