@@ -133,7 +133,19 @@ export type ContractLogsParams = {
   limit?: number;
 };
 
-/** One page of event logs for a contract, filtered by topics. */
+/**
+ * Keeps the logs whose topics match `topics` position by position; null entries match anything. The mirror
+ * node only accepts topic filters together with a bounded timestamp window (a few days at most), which cannot
+ * cover a market's life, so the topics are matched here instead of in the query.
+ */
+export function matchTopics(logs: MirrorLog[], topics?: (string | null)[]): MirrorLog[] {
+  if (!topics || topics.every(t => !t)) return logs;
+  return logs.filter(log =>
+    topics.every((topic, i) => !topic || (log.topics[i] ?? "").toLowerCase() === topic.toLowerCase()),
+  );
+}
+
+/** One page of event logs for a contract, filtered by topics in memory. */
 export async function getContractLogs(
   contractAddress: string,
   params: ContractLogsParams = {},
@@ -143,14 +155,11 @@ export async function getContractLogs(
     order: params.order ?? "asc",
     limit: params.limit ?? 100,
   };
-  params.topics?.forEach((topic, i) => {
-    if (topic) query[`topic${i}`] = topic;
-  });
   const data = await mirrorGet<{ logs: MirrorLog[]; links: { next: string | null } }>(
     `/api/v1/contracts/${contractAddress}/results/logs${encodeQuery(query)}`,
     options,
   );
-  return { items: data.logs ?? [], next: data.links?.next ?? null };
+  return { items: matchTopics(data.logs ?? [], params.topics), next: data.links?.next ?? null };
 }
 
 /** All pages of event logs for a contract, oldest first unless asked otherwise. */
@@ -165,7 +174,7 @@ export async function getAllContractLogs(
   let pages = 1;
   while (next && pages < MAX_PAGES) {
     const data = await mirrorGet<{ logs: MirrorLog[]; links: { next: string | null } }>(next, options);
-    items.push(...(data.logs ?? []));
+    items.push(...matchTopics(data.logs ?? [], params.topics));
     next = data.links?.next ?? null;
     pages += 1;
   }

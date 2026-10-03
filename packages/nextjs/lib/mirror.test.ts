@@ -75,8 +75,15 @@ describe("getContractResultByHash", () => {
 });
 
 describe("getContractLogs", () => {
-  it("passes topic filters and returns one page", async () => {
-    const fetchImpl = mockFetchOnce({ logs: [{ address: "0xdef" }], links: { next: null } });
+  it("matches topics in memory and keeps order and limit in the query", async () => {
+    const fetchImpl = mockFetchOnce({
+      logs: [
+        { address: "0xdef", topics: ["0xTOPIC0", "0xtopic1"] },
+        { address: "0xdef", topics: ["0xtopic0", "0xother"] },
+        { address: "0xdef", topics: ["0xelse"] },
+      ],
+      links: { next: null },
+    });
     const page = await getContractLogs(
       "0xdef",
       { topics: ["0xtopic0", "0xtopic1"], order: "desc", limit: 25 },
@@ -84,8 +91,8 @@ describe("getContractLogs", () => {
     );
     expect(page.items).toHaveLength(1);
     const [url] = fetchImpl.mock.calls[0] as unknown as [string];
-    expect(url).toContain("topic0=0xtopic0");
-    expect(url).toContain("topic1=0xtopic1");
+    // The mirror node only accepts topic filters with a bounded timestamp window, so topics never go in the query.
+    expect(url).not.toContain("topic0");
     expect(url).toContain("order=desc");
     expect(url).toContain("limit=25");
   });

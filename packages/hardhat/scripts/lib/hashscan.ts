@@ -1,4 +1,4 @@
-import { evmToAccountId, toTransactionId } from "../../../nextjs/lib/mirror";
+import { toTransactionId } from "../../../nextjs/lib/mirror";
 
 /**
  * HashScan links for Hedera testnet and the mirror node lookups the evidence ledger needs: the
@@ -132,11 +132,18 @@ export async function transactionEvidence(txHash: string, maxWaitMs = 45_000): P
   while (Date.now() < deadline) {
     try {
       const result = await mirrorGet<MirrorContractResultRecord>(`/api/v1/contracts/results/${txHash}`);
-      const payer = await evmToAccountId(result.from, { baseUrl: MIRROR_BASE_URL });
-      if (!payer) throw new MirrorLookupError(result.from, null, `No account behind ${result.from}`);
-      const transactionId = toTransactionId(payer, result.timestamp);
+      // An EVM transaction relayed through the JSON-RPC relay is paid by the relay's account with its own
+      // valid-start time, so the Hedera id cannot be derived from the sender; the mirror node finds it by
+      // consensus timestamp instead.
+      const byTimestamp = await mirrorGet<{ transactions: MirrorTransactionRecord[] }>(
+        `/api/v1/transactions?timestamp=${result.timestamp}`,
+      );
+      const parent = byTimestamp.transactions[0];
+      if (!parent) throw new MirrorLookupError(txHash, 404, `No transaction at ${result.timestamp}`);
+      const [payer, seconds, nanos] = parent.transaction_id.split("-");
+      const transactionId = `${payer}@${seconds}.${nanos}`;
       const records = await mirrorGet<{ transactions: MirrorTransactionRecord[] }>(
-        `/api/v1/transactions/${mirrorTransactionId(transactionId)}`,
+        `/api/v1/transactions/${parent.transaction_id}`,
       );
       const chargedTinybars = records.transactions.reduce((sum, t) => sum + BigInt(t.charged_tx_fee), 0n);
       return {
