@@ -110,3 +110,10 @@ Measured HBAR and gas for every step of the market lifecycle on Hedera testnet. 
 | Approve Verdict on YES for redeem | 727,196 | 0.60357268 (2 records) | 0.0.7314364@1791047778.796135036 |
 | Approve Verdict on NO for redeem | 727,184 | 0.60356272 (2 records) | 0.0.7314364@1791047785.877739713 |
 | Redeem 78144808 YES and 2000000000 NO on market 3 | 122,946 | 0.10204518 (5 records) | 0.0.7314364@1791047794.008316874 |
+| Create market: HBAR / USD Scalar, range 20 percent around spot, 30 minutes | 1,975,033 | 25.01022709 (4 records) | 0.0.7314364@1791047922.812032992 |
+| Market 4 split 5.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791047929.099381048 |
+| Market 4 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791047936.453804397 |
+| Create market: HBAR / USD Above, strike 5 percent above spot, 30 minutes | 1,954,952 | 24.99355986 (4 records) | 0.0.7314364@1791048543.013715156 |
+| Market 5 split 5.0 HBAR | 1,541,644 | 1.27956452 (5 records) | 0.0.7314364@1791048548.425224601 |
+| Market 5 approve SaucerSwap router on YES | 726,968 | 0.60338344 (2 records) | 0.0.7314364@1791048554.927873300 |
+| Market 5 pool creation and seed | 6,787,758 | 17.31931399 (20 records) | 0.0.7314364@1791048563.989937727 |
