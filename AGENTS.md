@@ -54,7 +54,7 @@ yarn next:dev
 
 # Local chain, deploy, frontend (separate terminals)
 yarn hardhat:chain                       # local Hardhat node on 8545 with HTS and HSS mocked (yarn hardhat:fork forks Hedera testnet)
-yarn hardhat:deploy --network localhost  # deploy to the running fork
+yarn hardhat:deploy --network localhost  # deploy to the running node
 yarn next:start
 
 # Quality
@@ -89,7 +89,7 @@ yarn hardhat:reference-deployment     # the six judged reference markets, checkp
 node scripts/check-readme-scripts.mjs
 ```
 
-`yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the long-running fork.
+`yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the long-running node.
 
 Operational scripts under `packages/hardhat/scripts/`: `create-market`, `seed-pool`, `trade`, `e2e-testnet`, `reference-deployment`, `verify-all`, `record-sync`, `agent-trade`, and throwaway `spikes/`. Run the Hardhat ones from the repo root through the workspace, for example:
 

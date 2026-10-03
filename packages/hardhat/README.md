@@ -26,7 +26,7 @@ yarn hardhat:test test/Verdict.test.ts
 
 The tests do not use the forking plugin: it emulates HTS but not HSS, and the suite needs to execute a scheduled call at a chosen time, which the HSS mock allows.
 
-Local fork workflow:
+Local node workflow (hermetic: HTS and HSS are mocked, nothing forks the relay):
 
 ```bash
 # terminal 1
@@ -36,7 +36,7 @@ yarn hardhat:chain
 yarn hardhat:deploy --network localhost
 ```
 
-`yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the node on port 8545.
+`yarn hardhat:fork` starts the node in forked mode instead, for experiments against live Hedera testnet state. `yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the node on port 8545.
 
 ## Deploy and verify on Hedera testnet
 
