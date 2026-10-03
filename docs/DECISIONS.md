@@ -25,6 +25,18 @@ Each entry is a decision the brief left open, a spike finding, or a cut, with on
 | 2026-10-03 | Frontend: `lib/**/*.test.ts` and `vitest.config.ts` are excluded from `tsconfig.json` until `vitest` is installed. | `yarn next:check-types` must stay green without the dev dependency; the tests still run under `yarn next:test` once it is added. |
 | 2026-10-03 | Frontend: HashScan transaction links use `/transaction/<hash>` for Hedera chain ids (`utils/scaffold-hbar/networks.ts`). | The scaffold built `/tx/<hash>`, which HashScan does not serve. |
 | 2026-10-03 | Frontend: the market page posts `{ "market": <id> }` to `/api/record` once a market is settled or void. | A scheduled resolution has no user present to write the HCS settlement message; the record route is idempotent and answers 503 without operator credentials. |
+| 2026-10-02 | `Verdict.sol` renders token names with a private `_decimal` helper instead of OpenZeppelin `Strings`. | OZ 5.6 `Strings` imports `Bytes.sol`, which needs the Cancun `mcopy` opcode, and the scaffold compiles for paris. |
+| 2026-10-02 | `getMarket` reverts `NoSuchMarket` for an unknown id rather than returning an empty struct. | One decoded reason everywhere; callers check `marketCount` first. |
+| 2026-10-02 | `split` after expiry reverts `MarketNotOpen`, the same error as a settled market. | The frozen interface has no separate expired error, and after expiry the market is closed to new collateral either way. |
+| 2026-10-02 | HTS codes 184 and 262 both surface as `NotAssociated(token)`. | Both mean the recipient cannot receive the token without associating; the fix for the user is the same. |
+| 2026-10-02 | HSS failures never revert `createMarket`: the code goes into `ScheduleFailed` and the market stays usable through `resolve`. `HssError` from the interface is therefore unused. | A missing schedule costs a manual `resolve`; a reverting creation would cost the whole market. |
+| 2026-10-02 | `resolveScheduled` records `settledBySchedule = true` whoever calls it; humans should call `resolve`. | The schedule's sender address is unconfirmed until spike 2, so the function cannot be gated by caller. |
+| 2026-10-02 | The shared settlement path returns a small enum; `resolve` maps it to custom errors and `resolveScheduled` to reason strings. | Same logic in one place with typed errors on the reverting path. |
+| 2026-10-02 | `merge` and `redeem` reject amounts larger than the market's collateral with `AmountTooLarge` before touching HTS. | Keeps the state update ahead of the external calls without ever hitting an arithmetic panic. |
+| 2026-10-02 | A resolver that reverts counts as "no fresh reading" for `resolve`, `resolveScheduled` and `voidMarket`. | A broken oracle must take the void path, never brick the market with a raw revert. |
+| 2026-10-02 | `hardhat.config.ts` is left forking Hedera testnet during `yarn hardhat:test`; the core tests pass either way. | The file belongs to the lead; the one-line `forking.enabled` toggle is requested in the core report. |
+| 2026-10-02 | The local deploy gives every Hardhat account unlimited automatic associations on the HTS mock and splits 20 HBAR into each of three sample markets. | A wallet with unlimited automatic associations is the normal Hedera setup, and the app needs data before anyone trades. |
+| 2026-10-02 | `MockHtsToken` gains the HIP-719 `associate()` and `isAssociated()` facade. | The frontend's one-click associate calls the token address on Hedera, so the mock must answer it too. |
 
 ## Spike findings
 

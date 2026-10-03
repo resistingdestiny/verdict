@@ -32,6 +32,11 @@ export async function installHederaMocks(): Promise<{
   return { hts, hss };
 }
 
+/** Pins the timestamp of the next block without mining it, so a transaction lands at a known second. */
+export async function setNextTime(timestamp: bigint | number): Promise<void> {
+  await network.provider.send("evm_setNextBlockTimestamp", [Number(timestamp)]);
+}
+
 /** Moves the chain to `timestamp` and mines a block there. */
 export async function setTime(timestamp: bigint | number): Promise<void> {
   await network.provider.send("evm_setNextBlockTimestamp", [Number(timestamp)]);
