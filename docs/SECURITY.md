@@ -16,6 +16,7 @@ The owner can:
 
 - Allow or disallow resolvers for new markets with `setResolver`. Existing markets keep the resolver they were created with.
 - Sweep HBAR held above tracked collateral and pending reserves with `sweepSurplus`. A test asserts the sweep cannot take the balance below collateral plus reserves.
+- Change the tinybars sent with each HTS token creation with `setTokenCreateValue`, an escape in case the HTS fee schedule changes. `creationCost()` follows it immediately, so the change only shifts what new market creators prepay; excess is still refunded and existing markets are untouched.
 
 The owner cannot:
 
@@ -25,8 +26,8 @@ The owner cannot:
 ## Oracle and liquidity risks
 
 - **Stale feed.** Each allowlisted feed has a maximum staleness. A round older than the expiry minus that limit is rejected, `resolve` reverts with `NoFreshReading`, and `resolveScheduled` emits `ResolveDeferred`. The market then relies on manual `resolve` attempts and, failing those, the void path.
-- **Missing round history.** The resolver finds the round current at expiry by walking `getRoundData` back from the latest round, capped at 32 steps. If an aggregator does not return history, resolution degrades to the void path for any expiry not caught within the walk.
-- **Slow testnet cadence.** Testnet feeds update on deviation, with observed gaps up to about 10 hours on some pairs. Staleness limits must be set per feed from observed cadence, or markets void that should have settled.
+- **Missing round history.** The resolver finds the round current at expiry by walking `getRoundData` back from the latest round, capped at 32 steps. History is confirmed on Hedera testnet for the three allowlisted feeds. For any other aggregator, resolution degrades to the void path when history runs out before the expiry second.
+- **Slow testnet cadence.** Testnet feeds update on deviation: observed gaps run from about 30 seconds to about an hour on HBAR / USD and up to about 10 hours on BTC / USD and ETH / USD. The allowlist sets staleness per feed from that cadence (6 hours for HBAR / USD, 24 hours for BTC / USD and ETH / USD, in `packages/hardhat/config/addresses.ts`); a feed slower than its limit voids markets that should have settled.
 - **Liquidity is thin by design.** The reference pools are seeded small (for example 20 YES against 10 HBAR). Quotes move the price, and large trades get little depth. This is a template, not a venue.
 - **LP losses near settlement.** A liquidity provider holds YES against HBAR while YES converges to its settlement value. As a market nears expiry the pool is one-sided exposure to the outcome; liquidity providers should expect to lose value to informed flow.
 - **Seeding is a position.** The creator who seeds at an even price keeps the NO leg from the split, so the creator starts short the outcome the pool prices.

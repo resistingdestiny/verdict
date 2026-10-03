@@ -172,13 +172,15 @@ The three interfaces are the contract between the contracts and everything else:
 
 Views: `marketCount`, `getMarket`, `totalCollateral`, `pendingReserves`, `resolverAllowed`, `creationCost`, `payoutFor`, `MIN_LEAD`, `MAX_LEAD`, `VOID_DELAY`, `RESOLUTION_RESERVE`.
 
+Beyond the frozen interface, the deployed contract adds one owner escape: `setTokenCreateValue(value)` changes the tinybars sent with each HTS token creation (default 1 HBAR, in case the HTS fee schedule changes), with `creationCost()` following it immediately.
+
 Events: `MarketCreated`, `ScheduleFailed`, `Split`, `Merged`, `Resolved`, `ResolveDeferred`, `Voided`, `Redeemed`, `ResolverSet`, `SurplusSwept`.
 
 Errors: `HtsError`, `HssError`, `NotAssociated`, `NoSuchMarket`, `ResolverNotAllowed`, `ExpiryTooSoon`, `ExpiryTooFar`, `InvalidBounds`, `InsufficientValue`, `ZeroAmount`, `AmountTooLarge`, `MarketNotOpen`, `MarketNotExpired`, `MarketNotSettled`, `NoFreshReading`, `FreshReadingExists`, `VoidTooEarly`, `NothingToSweep`, `TransferFailed`.
 
 ### ChainlinkResolver.sol
 
-Implements `IResolver`: `readingAt(feedId, time)` walks back from `latestRoundData` with `getRoundData` until it finds the round current at `time`, capped at 32 steps with each read wrapped in `try`. It returns `ok` false for a non-positive answer or a round older than the feed's maximum staleness. Feeds are allowlisted at deployment, each with its own staleness limit. `describe` returns a human-readable feed name and `feedDecimals` the feed's decimals.
+Implements `IResolver`: `readingAt(feedId, time)` walks back from `latestRoundData` with `getRoundData` until it finds the round current at `time`, capped at `MAX_WALK` 32 steps with every aggregator read wrapped in `try`, so a failing read becomes "no fresh reading" rather than a revert. It returns `ok` false for a non-positive answer or a round older than the feed's maximum staleness. Feeds are allowlisted at deployment, each with its own staleness limit. `describe` returns a human-readable feed name and `feedDecimals` the feed's decimals. The reference deployment allowlists HBAR / USD, BTC / USD and ETH / USD on Hedera testnet, all 8 decimals with round history confirmed through `getRoundData`. Their addresses and staleness limits (6 hours for HBAR / USD, 24 hours for BTC / USD and ETH / USD, set from the observed update cadence) live in `packages/hardhat/config/addresses.ts`.
 
 ### VerdictRouter.sol
 
