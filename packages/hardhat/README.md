@@ -5,7 +5,7 @@ Contracts, deploy scripts, tests and HashScan verification for Verdict.
 - `contracts/Verdict.sol`: markets, outcome tokens, collateral, settlement, redemption
 - `contracts/VerdictRouter.sol`: the four trades against SaucerSwap, one transaction each
 - `contracts/resolvers/ChainlinkResolver.sol`: the Chainlink reading current at a given time
-- `contracts/interfaces/`: `IVerdict.sol`, `IResolver.sol`, `IVerdictRouter.sol`, frozen
+- `contracts/interfaces/`: `IVerdict.sol`, `IResolver.sol`, `IVerdictRouter.sol`, frozen except for appending `Kind` values, which is how a market kind is added
 - `contracts/mocks/`: HTS, HSS and Chainlink test doubles used by the test suite
 - `contracts/libraries/HederaCodes.sol`: the HAPI response codes used at the system contract boundary
 - `config/addresses.ts`: the only file with hard-coded external addresses, each with its source URL and the date checked
