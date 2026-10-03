@@ -73,7 +73,6 @@ export type MarketJson = {
 };
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-const E8 = 100_000_000n;
 
 /** Trim trailing zeros from a decimal string, keeping at least the integer part. */
 export function trimDecimal(text: string): string {
