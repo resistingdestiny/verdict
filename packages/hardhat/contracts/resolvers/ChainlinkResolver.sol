@@ -7,8 +7,9 @@ import { IResolver } from "../interfaces/IResolver.sol";
 /// @title ChainlinkResolver
 /// @notice Answers "what did this Chainlink feed say at that second" for an allowlisted set of feeds, each
 ///         with its own maximum staleness. The feed id is the aggregator address left-padded to 32 bytes.
-/// @dev Stateless after construction. `readingAt` walks back from the latest round until it finds the round
-///      that was current at the requested time, at most 32 steps, and never reverts: every aggregator read
+/// @dev Stateless after construction. `readingAt` finds the round that was current at the requested time
+///      by binary search over the aggregator's current phase (round ids within a phase are contiguous and
+///      `updatedAt` never decreases), at most `MAX_READS` reads, and never reverts: every aggregator read
 ///      is wrapped in `try`, and any failure or an unknown feed reads as "no fresh reading".
 contract ChainlinkResolver is IResolver {
     struct Feed {
@@ -17,8 +18,17 @@ contract ChainlinkResolver is IResolver {
         uint8 decimals;
     }
 
-    /// @notice Most rounds walked back from the latest one before giving up.
-    uint256 public constant MAX_WALK = 32;
+    /// @dev The round a search settles on. `found` is false when there is none.
+    struct Round {
+        bool found;
+        uint80 roundId;
+        int256 answer;
+        uint256 updatedAt;
+    }
+
+    /// @notice Most `getRoundData` reads in one lookup, the gas bound of the search. 40 reads cover any phase
+    ///         shorter than 2^40 rounds; a search that has not converged by then reads as "no fresh reading".
+    uint256 public constant MAX_READS = 40;
 
     error LengthMismatch();
     error ZeroAddress();
@@ -64,18 +74,12 @@ contract ChainlinkResolver is IResolver {
             return (false, 0, 0, 0, 0);
         }
 
-        uint256 steps = 0;
-        while (published > time && steps < MAX_WALK) {
-            // slither-disable-next-line unused-return
-            try feed.aggregator.getRoundData(roundId - 1) returns (uint80 r, int256 a, uint256, uint256 u, uint80) {
-                (roundId, answer, published) = (r, a, u);
-            } catch {
-                return (false, 0, 0, 0, 0);
-            }
-            steps++;
+        if (published > time) {
+            Round memory best = _search(feed.aggregator, roundId, time);
+            if (!best.found) return (false, 0, 0, 0, 0);
+            (roundId, answer, published) = (best.roundId, best.answer, best.updatedAt);
         }
 
-        if (published > time) return (false, 0, 0, 0, 0);
         if (answer <= 0) return (false, 0, 0, 0, 0);
         if (published + feed.maxStaleness < time) return (false, 0, 0, 0, 0);
         return (true, answer, feed.decimals, roundId, uint64(published));
@@ -105,6 +109,38 @@ contract ChainlinkResolver is IResolver {
     /// @notice The feed id of an aggregator address: the address left-padded to 32 bytes.
     function feedIdOf(address aggregator) public pure returns (bytes32) {
         return bytes32(uint256(uint160(aggregator)));
+    }
+
+    /// @dev The greatest round of `latest`'s phase published at or before `time`, when the latest round itself
+    ///      is too new. The phase is the high 64 bits of the round id and rounds within it count up from 1,
+    ///      so this is a binary search over [1, latest), bounded by `MAX_READS` reads. Not found when every
+    ///      round in the phase is after `time`, when a read fails, or when the cap stopped the search before
+    ///      it converged, since the best round seen is then not known to be the one current at `time`.
+    function _search(
+        AggregatorV3Interface aggregator,
+        uint80 latest,
+        uint64 time
+    ) private view returns (Round memory best) {
+        uint80 phase = latest & ~uint80(type(uint64).max);
+        uint64 low = 1;
+        uint64 high = uint64(latest);
+        uint256 reads = 0;
+        while (low < high && reads < MAX_READS) {
+            uint64 mid = low + (high - low) / 2;
+            // slither-disable-next-line unused-return
+            try aggregator.getRoundData(phase | mid) returns (uint80 r, int256 a, uint256, uint256 u, uint80) {
+                if (u <= time) {
+                    best = Round({ found: true, roundId: r, answer: a, updatedAt: u });
+                    low = mid + 1;
+                } else {
+                    high = mid;
+                }
+            } catch {
+                return Round({ found: false, roundId: 0, answer: 0, updatedAt: 0 });
+            }
+            reads++;
+        }
+        if (low < high) return Round({ found: false, roundId: 0, answer: 0, updatedAt: 0 });
     }
 
     function _feed(bytes32 feedId) private view returns (Feed storage feed) {

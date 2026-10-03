@@ -165,7 +165,7 @@ sequenceDiagram
     Note over HSS,V: at the expiry second, no account sends this
     HSS->>V: resolveScheduled(id)
     V->>R: readingAt(feedId, expiry)
-    R->>CL: latestRoundData, then getRoundData walking back (cap 32)
+    R->>CL: latestRoundData, then a getRoundData binary search (cap 40 reads)
     CL-->>R: the round current at expiry
     alt fresh round found
         R-->>V: ok, answer, roundId, updatedAt

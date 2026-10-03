@@ -30,7 +30,7 @@ The owner cannot:
 
 - **Stale feed.** Each allowlisted feed has a maximum staleness. A round older than the expiry minus that limit is rejected, `resolve` reverts with `NoFreshReading`, and `resolveScheduled` emits `ResolveDeferred`. The market then relies on manual `resolve` attempts and, failing those, the void path.
 - **Broken resolver.** A resolver that reverts counts as "no fresh reading" for `resolve`, `resolveScheduled` and `voidMarket`: a broken oracle takes the void path and can never brick a market with a raw revert.
-- **Missing round history.** The resolver finds the round current at expiry by walking `getRoundData` back from the latest round, capped at 32 steps. History is confirmed on Hedera testnet for the three allowlisted feeds. For any other aggregator, resolution degrades to the void path when history runs out before the expiry second.
+- **Missing round history.** The resolver finds the round current at expiry by binary search over the aggregator's current phase with `getRoundData`, capped at 40 reads, so the reading stays reachable however many rounds are published after expiry. History is confirmed on Hedera testnet for the three allowlisted feeds. For any other aggregator, a read that fails inside the search degrades resolution to the void path.
 - **Slow testnet cadence.** Testnet feeds update on deviation: observed gaps run from about 30 seconds to about an hour on HBAR / USD and up to about 10 hours on BTC / USD and ETH / USD. The allowlist sets staleness per feed from that cadence (6 hours for HBAR / USD, 24 hours for BTC / USD and ETH / USD, in `packages/hardhat/config/addresses.ts`); a feed slower than its limit voids markets that should have settled.
 - **Liquidity is thin by design.** The reference pools are seeded small (for example 20 YES against 10 HBAR). Quotes move the price, and large trades get little depth. This is a template, not a venue.
 - **LP losses near settlement.** A liquidity provider holds YES against HBAR while YES converges to its settlement value. As a market nears expiry the pool is one-sided exposure to the outcome; liquidity providers should expect to lose value to informed flow.
@@ -69,7 +69,7 @@ Findings dismissed, each with an inline `slither-disable-next-line` at the site:
 | `unused-return` (medium) | `Verdict._reading` | `readingAt` also returns the feed decimals, which the market recorded at creation; the reading uses the other four values. |
 | `unused-return` (medium) | `VerdictRouter.sellNo` | `swapETHForExactTokens` returns the amounts, but the exact output was requested and the input was quoted with `getAmountsIn` in the same transaction, so there is nothing new to read. |
 | `unused-return` (medium) | `VerdictRouter.reserves` | `getReserves` also returns the last sync timestamp, which a quote does not need. |
-| `unused-return` (medium) | `ChainlinkResolver.readingAt` (two sites) | `latestRoundData` and `getRoundData` also return `startedAt` and `answeredInRound`; the walk uses the round id, answer and `updatedAt`. |
+| `unused-return` (medium) | `ChainlinkResolver.readingAt` and `_search` | `latestRoundData` and `getRoundData` also return `startedAt` and `answeredInRound`; the search uses the round id, answer and `updatedAt`. |
 
 Low and informational findings, reviewed and left as they are:
 
@@ -77,7 +77,7 @@ Low and informational findings, reviewed and left as they are:
 | --- | --- | --- |
 | `timestamp` (low) | expiry, void and deadline checks | Markets are about a second on the ledger's clock by design; consensus time on Hedera is not miner-controlled. |
 | `reentrancy-events` (low) | the four router trades | `Traded` is emitted after the swap because it carries the swap's result; the router holds no state the event could misreport. |
-| `calls-loop` (low) | `Verdict._schedule`, `ChainlinkResolver` constructor and `readingAt` | Each loop is bounded by a constant (8 probes, the constructor's feed list, 32 rounds) and every call is to a system contract or a Chainlink aggregator. |
+| `calls-loop` (low) | `Verdict._schedule`, `ChainlinkResolver` constructor and `_search` | Each loop is bounded by a constant (8 probes, the constructor's feed list, 40 reads) and every call is to a system contract or a Chainlink aggregator. |
 | `missing-zero-check` (low) | `VerdictRouter` constructor `whbarToken_` | A zero WHBAR would make every pair lookup fail on first use, which the deploy script and tests catch immediately; the router is stateless and replaceable. |
 | `low-level-calls` (informational) | `Verdict._pay`, `VerdictRouter._sendHbar` | A plain `call` is the only way to pay HBAR to an arbitrary account; both check the result and revert with `TransferFailed`. |
 | `naming-convention` (informational) | `WHBAR()`, `MIN_LEAD()` and the other constant getters | They mirror SaucerSwap's and Verdict's constant names on purpose. |

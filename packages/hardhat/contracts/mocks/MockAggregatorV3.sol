@@ -19,6 +19,8 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     uint8 private immutable _decimals;
     string private _description;
     uint80 public latestAggregatorRound;
+    /// @notice Rounds below this aggregator round read as missing, like an aggregator that dropped early history.
+    uint80 public historyStart;
     mapping(uint80 aggregatorRound => Round) private _rounds;
 
     constructor(uint8 decimals_, string memory description_) {
@@ -31,6 +33,11 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         latestAggregatorRound += 1;
         _rounds[latestAggregatorRound] = Round({ answer: answer, startedAt: updatedAt, updatedAt: updatedAt });
         return PHASE_PREFIX | latestAggregatorRound;
+    }
+
+    /// @notice Make `getRoundData` revert for every round below `aggregatorRound`. Zero keeps all history.
+    function setHistoryStart(uint80 aggregatorRound) external {
+        historyStart = aggregatorRound;
     }
 
     function decimals() external view override returns (uint8) {
@@ -54,7 +61,13 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         returns (uint80 roundId_, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
         uint80 aggregatorRound = uint80(uint64(roundId));
-        require(roundId >> 64 == 1 && aggregatorRound > 0 && aggregatorRound <= latestAggregatorRound, "No data present");
+        require(
+            roundId >> 64 == 1 &&
+                aggregatorRound > 0 &&
+                aggregatorRound >= historyStart &&
+                aggregatorRound <= latestAggregatorRound,
+            "No data present"
+        );
         Round memory r = _rounds[aggregatorRound];
         return (roundId, r.answer, r.startedAt, r.updatedAt, roundId);
     }
