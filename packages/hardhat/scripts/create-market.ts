@@ -8,11 +8,20 @@ import { parseArgs, requireArgs, hashscanTx, hashscanToken, WEIBARS_PER_TINYBAR 
  *   FEED=HBAR/USD KIND=Above LOWER=0.10 EXPIRY=2026-10-09T16:00:00Z yarn hardhat:create-market
  *   (flags of the same names also work when the script is run through hardhat directly)
  *
+ * `RESOLVER=guarded` creates the market against the deployed GuardedResolver (deployed with
+ * `GUARDED=1 yarn hardhat:deploy:testnet`) instead of ChainlinkResolver, the default.
+ *
  * Bounds are human units, converted with the feed's decimals. Prints the market id, the YES and NO
  * tokens and the resolution schedule, with HashScan links.
  */
 
 const KINDS: Record<string, number> = { Above: 0, Below: 1, Between: 2, Scalar: 3 };
+
+/** `RESOLVER` values and the deployment each names, with the command that deploys it. */
+const RESOLVERS: Record<string, { name: string; deploy: string }> = {
+  chainlink: { name: "ChainlinkResolver", deploy: "yarn hardhat:deploy:testnet" },
+  guarded: { name: "GuardedResolver", deploy: "GUARDED=1 yarn hardhat:deploy:testnet" },
+};
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -32,8 +41,11 @@ async function main() {
   if (Number.isNaN(expiryMs)) throw new Error(`Bad --expiry "${args.expiry}", expected an ISO date`);
   const expiry = Math.floor(expiryMs / 1000);
 
-  const resolverDeployment = await deployments.getOrNull("ChainlinkResolver");
-  if (!resolverDeployment) throw new Error("ChainlinkResolver is not deployed. Run yarn hardhat:deploy first.");
+  const resolverKey = args.resolver ?? process.env.RESOLVER ?? "chainlink";
+  const resolver = RESOLVERS[resolverKey];
+  if (!resolver) throw new Error(`Unknown resolver "${resolverKey}". Known: ${Object.keys(RESOLVERS).join(", ")}`);
+  const resolverDeployment = await deployments.getOrNull(resolver.name);
+  if (!resolverDeployment) throw new Error(`${resolver.name} is not deployed. Run ${resolver.deploy} first.`);
   const verdictDeployment = await deployments.get("Verdict");
   const verdict = await ethers.getContractAt("IVerdict", verdictDeployment.address);
 
@@ -42,7 +54,7 @@ async function main() {
   console.log(
     `Creating ${args.kind} market on ${args.feed}: lower=${args.lower} upper=${needsUpper ? args.upper : "-"} expiry=${args.expiry}`,
   );
-  console.log(`Resolver ${resolverDeployment.address}, feedId ${feedId}, cost ${cost} tinybars`);
+  console.log(`${resolver.name} ${resolverDeployment.address}, feedId ${feedId}, cost ${cost} tinybars`);
 
   const tx = await verdict.createMarket(resolverDeployment.address, feedId, kind, lower, upper, expiry, {
     value: cost * WEIBARS_PER_TINYBAR,
