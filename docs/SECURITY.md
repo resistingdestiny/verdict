@@ -7,6 +7,7 @@ Two terms recur. An oracle is a service that brings off-ledger data, here prices
 ## Trust assumptions
 
 - **The oracle decides the outcome.** A market settles on the number its resolver returns for the expiry second. For the reference deployment, that number comes from a Chainlink feed on Hedera testnet. A wrong answer that passes the freshness checks becomes the settlement, and no function can change a payout once it is written.
+- **A guard can only void.** A market created against `GuardedResolver` settles on the same Chainlink answer `ChainlinkResolver` would give it. Supra is consulted only to refuse a reading, so a wrong, stale or manipulated Supra price can at worst stop the market from settling and send it down the void path; it can never change an answer or a payout. The guard has no owner and its configuration is fixed at deployment. Because Supra keeps no history, the guard refuses every reading more than `maxDelay` (10 minutes in the deploy script) after expiry, so a guarded market whose schedule does not settle it and that nobody resolves by hand within that window voids.
 - **Hedera system contracts behave as documented.** Verdict calls the Hedera Token Service (HTS) at `0x167` and the Hedera Schedule Service (HSS) at `0x16b` directly. Their response codes are checked (22 is success) and surfaced as `HtsError` and `HssError`.
 - **The scheduled call fires.** Resolution with no keeper depends on HSS running `resolveScheduled` at the expiry second. If it does not, anyone can call `resolve` after expiry. If the feed also has no fresh round, the void path applies 24 hours later.
 - **SaucerSwap V1 behaves as a constant-product pool.** The router trusts the pool's swap math for quotes. It bounds every trade with a slippage limit and a deadline and holds nothing between transactions, so a pool fault costs at most one failed trade.
@@ -31,6 +32,7 @@ The owner cannot:
 - **Broken resolver.** A resolver that reverts counts as "no fresh reading" for `resolve`, `resolveScheduled` and `voidMarket`. A broken oracle therefore sends the market down the void path; it can never lock a market with a raw revert.
 - **Missing round history.** The resolver finds the round current at expiry by binary search over the aggregator's current phase with `getRoundData`, capped at 40 reads. The reading stays reachable however many rounds are published after expiry. Round history is confirmed on Hedera testnet for the three allowlisted feeds. For any other aggregator, a read that fails inside the search sends resolution down the void path.
 - **Slow testnet cadence.** Testnet feeds update when the price moves enough. Observed gaps run from about 30 seconds to about an hour on HBAR/USD, and up to about 10 hours on BTC/USD and ETH/USD. The allowlist sets each feed's staleness from that cadence: 6 hours for HBAR/USD and 24 hours for BTC/USD and ETH/USD, in `packages/hardhat/config/addresses.ts`. A feed slower than its limit voids markets that should have settled.
+- **Second oracle outages.** A guarded market also needs Supra to be fresh (3 hours in the deploy script) and within 1.5 percent of Chainlink at expiry. Supra's testnet pairs updated every 30 to 60 minutes on 2026-10-04, and they are quoted against USDT rather than USD, so a USDT depeg beyond the tolerance would void every guarded market that expires during it.
 - **Liquidity is thin by design.** The reference pools are seeded small, for example 20 YES against 10 HBAR. Trades move the price, and large trades find little depth. This is a template, not a trading venue.
 - **LP losses near settlement.** A liquidity provider holds YES against HBAR while YES moves towards its settlement value. As a market nears expiry, the pool becomes one-sided exposure to the outcome, and liquidity providers should expect to lose value to traders who know more.
 - **Seeding is a position.** A creator who seeds at an even price keeps the NO leg from the split, so the creator starts out short the outcome the pool prices.
@@ -58,7 +60,7 @@ A review pass on 2026-10-03, by a separate Claude Opus agent reading the contrac
 
 ## Slither notes
 
-Slither is a static analyser for Solidity. Run it from the repository root with `slither packages/hardhat --config-file slither.config.json` (Slither 0.11.5, solc 0.8.28). The config filters `node_modules` and `mocks`, and CI fails on any finding of medium impact or above. Last run 2026-10-03, after the review fixes: no high or medium finding open, and 25 low and informational findings reviewed below.
+Slither is a static analyser for Solidity. Run it from the repository root with `slither packages/hardhat --config-file slither.config.json` (Slither 0.11.5, solc 0.8.28). The config filters `node_modules` and `mocks`, and CI fails on any finding of medium impact or above. Last run 2026-10-04, after `GuardedResolver` was added: no high or medium finding open, and 26 low and informational findings reviewed below.
 
 Findings fixed:
 
@@ -76,12 +78,13 @@ Findings dismissed, each with an inline `slither-disable-next-line` at the site:
 | `unused-return` (medium) | `VerdictRouter.sellNo` | `swapETHForExactTokens` returns the amounts, but the exact output was requested and the input was quoted with `getAmountsIn` in the same transaction, so there is nothing new to read. |
 | `unused-return` (medium) | `VerdictRouter.reserves` | `getReserves` also returns the last sync timestamp, which a quote does not need. |
 | `unused-return` (medium) | `ChainlinkResolver.readingAt` and `_search` | `latestRoundData` and `getRoundData` also return `startedAt` and `answeredInRound`; the search uses the round id, the answer and `updatedAt`. |
+| `unused-return` (medium) | `GuardedResolver._supraAgrees` | `getSvalue` also returns the Supra round number, which the freshness check does not need; it uses the publication time instead. |
 
 Low and informational findings, reviewed and left as they are:
 
 | Finding | Where | Reason |
 | --- | --- | --- |
-| `timestamp` (low) | expiry, void and deadline checks | Markets are about a second on the ledger's clock by design, and consensus time on Hedera is not set by a single block producer. |
+| `timestamp` (low) | expiry, void and deadline checks, and the `maxDelay` check in `GuardedResolver.readingAt` | Markets are about a second on the ledger's clock by design, and consensus time on Hedera is not set by a single block producer. |
 | `reentrancy-events` (low) | the four router trades; `Verdict._settle`, `resolveScheduled` and `voidMarket` | `Traded` is emitted after the swap because it carries the swap's result, and the router holds no state the event could misreport. In Verdict the call before the event is `HSS.deleteSchedule` in `_releaseReserve`, made to the system contract at `0x16b` after every state write, and the events carry only values written before it. |
 | `calls-loop` (low) | `Verdict._hasCapacity` (called from `_schedule`'s loop), the `ChainlinkResolver` constructor and `_search` | Each loop is bounded by a constant (8 probes, the constructor's feed list, 40 reads), and every call goes to a system contract or a Chainlink aggregator. |
 | `missing-zero-check` (low) | `VerdictRouter` constructor `whbarToken_` | A zero WHBAR (wrapped HBAR) address would make every pair lookup fail on first use, which the deploy script and the tests catch immediately; the router is stateless and replaceable. |
@@ -99,6 +102,9 @@ Measured on 2026-10-04, after the review fixes:
 | `Verdict.sol` | 100% | 99.26% | 100% | 100% |
 | `ChainlinkResolver.sol` | 97.56% | 95.83% | 100% | 100% |
 | `VerdictRouter.sol` | 100% | 100% | 100% | 100% |
+| `GuardedResolver.sol` | 100% | 100% | 100% | 100% |
+
+Remeasured on 2026-10-04 after `GuardedResolver.sol` was added: its row is new and the other three did not change.
 
 Every line runs. The statements and branches not taken are guards that the mocks cannot trip, kept because the real network can:
 
@@ -110,6 +116,7 @@ The paths that only a misbehaving system contract or aggregator can reach are co
 - `MockHederaTokenService.setForcedCode(selector, code)` makes one HTS call return a chosen code, and the same mock returns code 262 once an account has used up its automatic association slots.
 - `MockHederaScheduleService.setForcedCode(22)` reproduces a schedule reported as a success without an address, and `setCapacityReverts` makes the capacity probe revert.
 - `MockAggregatorV3.setHistoryStart` stands in for an aggregator that dropped its early rounds.
+- `MockSupraSValueFeed` takes any price, decimals and publication time per pair, and `setReverting` makes it revert, which reaches every refusal path in `GuardedResolver`; `MockFailingResolver` stands in for a wrapped resolver that reverts or answers zero.
 - `MockCaller` is a contract account that re-enters `createMarket` from its refund and `sweepSurplus` from its payment, which exercises the reentrancy guards on the two functions whose payment goes to the caller. As a trader it pushes HBAR (`setReenterValue`), YES or NO back into the router from its payout, which trips each arm of the router's holdings check.
 - `MockPoolView` answers the factory and pair views with a chosen `token0` and reserves. It puts the YES token on the `token0` side of a pair, which no real Verdict pool can be: SaucerSwap orders a pair's tokens by address, and the WHBAR token (`0.0.15058`, `0x3aD2`) is older, so lower, than any token Verdict creates. The router's `reserves` handles both orders so it does not depend on that.
 - The zero-net arm of `sellNo` and `quoteSellNo` is reached with a large sale against a small pool, where buying back the YES costs more than the NO is worth.

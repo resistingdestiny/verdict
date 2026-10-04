@@ -198,7 +198,7 @@ The finish line is the CI workflow, `.github/workflows/ci.yml`. Its jobs and the
 | --- | --- | --- |
 | Lint, types, tests, build | `yarn hardhat:compile`, `yarn next:lint --max-warnings=0`, `yarn hardhat:lint --max-warnings=0`, `yarn next:check-types`, `yarn hardhat:check-types`, `yarn hardhat:test`, `yarn next:test`, `yarn next:build`, `node scripts/check-readme-scripts.mjs`, `node scripts/check-template-json.mjs` | `yarn lint` runs both lints. `hardhat:lint` and `hardhat:check-types` print nothing on success. The property file shows as pending under `yarn hardhat:test` because it is gated. |
 | Property tests | `yarn hardhat:test:property` | CI sets `VERDICT_PROPERTY_RUNS=200`; the default is 1000. Set it lower locally while iterating. |
-| Coverage | `yarn hardhat:coverage` | Line and branch coverage on the three contracts. The summary is printed; nothing is uploaded. |
+| Coverage | `yarn hardhat:coverage` | Line and branch coverage on the contracts. The summary is printed; nothing is uploaded. |
 | Slither | `slither packages/hardhat --config-file slither.config.json` | CI runs `crytic/slither-action` with `slither.config.json` at the repo root, which filters `node_modules` and `mocks` and fails on medium. Run the command locally if Slither is installed. |
 | Playwright routes | `yarn next:test:e2e` | Needs a production build first (`yarn next:build`) and Chromium (`npx playwright install --with-deps chromium` inside `packages/nextjs`). |
 | Secrets scan | gitleaks over the full history | Run `gitleaks detect` at the repo root if you have it installed. Never commit a `.env`. |

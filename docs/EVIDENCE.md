@@ -18,7 +18,7 @@ Two deployments exist on Hedera testnet. Deployment v1 ran the first full lifecy
 | HCS topic | v2 (current) | `0.0.10844607` | [topic](https://hashscan.io/testnet/topic/0.0.10844607) | |
 | HCS topic | v1 | `0.0.10844224` | [topic](https://hashscan.io/testnet/topic/0.0.10844224) | |
 
-Two stretch contracts, `VerdictSeries` and `GuardedResolver`, were designed but not built. [ARCHITECTURE.md](ARCHITECTURE.md#designed-but-not-built) sketches them.
+One stretch contract, `VerdictSeries`, was designed but not built; [ARCHITECTURE.md](ARCHITECTURE.md#designed-but-not-built) sketches it. `GuardedResolver` was added after the reference deployment and is not part of it; the README section "A second oracle: GuardedResolver" says how to deploy it.
 
 ## Lifecycle, one market end to end
 

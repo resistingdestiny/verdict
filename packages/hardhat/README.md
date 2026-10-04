@@ -5,11 +5,12 @@ Contracts, deploy scripts, tests and source verification for Verdict. The root [
 - `contracts/Verdict.sol`: markets, outcome tokens, collateral, settlement, redemption
 - `contracts/VerdictRouter.sol`: the four trades against SaucerSwap, one transaction each
 - `contracts/resolvers/ChainlinkResolver.sol`: the Chainlink reading that was current at a given time
-- `contracts/interfaces/`: `IVerdict.sol`, `IResolver.sol` and `IVerdictRouter.sol`, frozen except for appending `Kind` values (which is how a market kind is added), plus the HSS, SaucerSwap and Chainlink interfaces
-- `contracts/mocks/`: test doubles for HTS, HSS, the exchange rate, Chainlink and SaucerSwap, used by the test suite
+- `contracts/resolvers/GuardedResolver.sol`: the ChainlinkResolver reading, passed on only when the Supra push oracle agrees with it
+- `contracts/interfaces/`: `IVerdict.sol`, `IResolver.sol` and `IVerdictRouter.sol`, frozen except for appending `Kind` values (which is how a market kind is added), plus the HSS, SaucerSwap, Chainlink and Supra interfaces
+- `contracts/mocks/`: test doubles for HTS, HSS, the exchange rate, Chainlink, Supra and SaucerSwap, used by the test suite
 - `contracts/libraries/HederaCodes.sol`: the Hedera API (HAPI) response codes used at the system contract boundary
 - `config/addresses.ts`: the only file with hard-coded external addresses, each with its source URL and the date it was checked
-- `deploy/`: hardhat-deploy scripts; they also create the HCS topic when operator credentials are set
+- `deploy/`: hardhat-deploy scripts; they also create the HCS topic when operator credentials are set, and deploy GuardedResolver on local networks or on Hedera testnet with `GUARDED=1`
 - `scripts/`: `create-market`, `seed-pool`, `trade`, `e2e-testnet`, `reference-deployment`, `verify-all`, `record-sync`, `agent-trade` and `recover-markets`, with shared helpers in `scripts/lib/`
 - `test/`: contract tests; `test/helpers/hedera.ts` installs the mocks at `0x167` and `0x16b` with `hardhat_setCode`
 

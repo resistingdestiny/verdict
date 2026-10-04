@@ -25,12 +25,12 @@ packages/
       Verdict.sol               markets, outcome tokens, collateral, settlement, redemption
       VerdictRouter.sol         four trades in one transaction each; stateless, holds nothing
       interfaces/               IVerdict.sol, IResolver.sol, IVerdictRouter.sol (frozen, except for appending Kind values),
-                                plus the HSS, SaucerSwap and Chainlink interfaces
-      resolvers/                ChainlinkResolver.sol
-      mocks/                    HTS, HSS, exchange rate, Chainlink and SaucerSwap test doubles
+                                plus the HSS, SaucerSwap, Chainlink and Supra interfaces
+      resolvers/                ChainlinkResolver.sol; GuardedResolver.sol (Chainlink, passed on only when Supra agrees)
+      mocks/                    HTS, HSS, exchange rate, Chainlink, Supra and SaucerSwap test doubles
       libraries/HederaCodes.sol Hedera API (HAPI) response codes used at the system contract boundary
     config/addresses.ts         the only file with hard-coded external addresses
-    deploy/                     hardhat-deploy scripts; also creates the HCS topic
+    deploy/                     hardhat-deploy scripts; also creates the HCS topic; GuardedResolver locally or with GUARDED=1
     scripts/                    create-market, seed-pool, trade, e2e-testnet, reference-deployment,
                                 verify-all, record-sync, agent-trade, recover-markets; lib/ holds shared helpers
     test/                       contract tests; helpers/hedera.ts installs the mocks
@@ -80,7 +80,7 @@ yarn hardhat:compile
 yarn hardhat:test                        # whole contract suite
 yarn hardhat:test test/Verdict.test.ts   # one file while iterating
 yarn hardhat:test:property               # the gated property suite (VERDICT_PROPERTY_RUNS lowers the sequence count)
-yarn hardhat:coverage                    # line and branch coverage on the three contracts
+yarn hardhat:coverage                    # line and branch coverage on the contracts (mocks, interfaces and libraries excluded)
 yarn next:build
 
 # Deployer account
@@ -90,6 +90,7 @@ yarn hardhat:account
 
 # Live networks (never mainnet for this template)
 yarn hardhat:deploy:testnet              # deploy to Hedera testnet
+GUARDED=1 yarn hardhat:deploy:testnet    # the same, plus GuardedResolver, allowed on Verdict
 yarn hardhat:verify -- Verdict testnet [0xAddress]
 yarn hardhat:verify-all                  # idempotent Sourcify verification of all three contracts
 yarn record:create-topic                 # create the HCS record topic (needs operator env), writes verdict.config.ts
@@ -110,6 +111,7 @@ The operational scripts live in `packages/hardhat/scripts/`: `create-market`, `s
 
 ```bash
 FEED=HBAR/USD KIND=Above LOWER=0.10 EXPIRY=2026-10-09T16:00:00Z yarn hardhat:create-market
+RESOLVER=guarded FEED=HBAR/USD KIND=Above LOWER=0.10 EXPIRY=2026-10-09T16:00:00Z yarn hardhat:create-market
 ID=0 SPLIT=20 LIQUIDITY=10 yarn hardhat:seed-pool
 ID=0 TRADE=buyYes AMOUNT=1 yarn hardhat:trade
 ```
