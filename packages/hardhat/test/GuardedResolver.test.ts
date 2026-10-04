@@ -186,6 +186,17 @@ describe("GuardedResolver", function () {
       expect(await readingOf(guarded, feedId, time)).to.deep.equal(NONE);
       await supra.setSvalue(HBAR_USDT, ethers.MaxUint256, 0, published);
       expect(await readingOf(guarded, feedId, time)).to.deep.equal(NONE);
+
+      const wide = await (await ethers.getContractFactory("MockAggregatorV3")).deploy(78, "WIDE / USD");
+      const wideId = ethers.zeroPadValue(await wide.getAddress(), 32);
+      const wideChainlink = await (
+        await ethers.getContractFactory("ChainlinkResolver")
+      ).deploy([await wide.getAddress()], [SIX_HOURS]);
+      const overWide = await deployGuarded(wideChainlink, supra, [wideId], [HBAR_USDT]);
+      await pushRound(wide, 1n, time - MINUTE);
+      await supra.setSvalue(HBAR_USDT, SUPRA_PRICE, 18, published);
+      expect((await wideChainlink.readingAt(wideId, time)).ok, "Chainlink at 78 decimals").to.equal(true);
+      expect(await readingOf(overWide, wideId, time)).to.deep.equal(NONE);
     });
   });
 
