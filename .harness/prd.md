@@ -2,9 +2,9 @@
 
 ## Goal
 
-Add a fifth market kind, Outside, to Verdict. One YES token pays 1 HBAR when the price at expiry is outside the range: strictly below the lower bound, or at or above the upper bound. Otherwise it pays nothing. One NO token pays the complement, as in every kind.
+Add a fifth market kind, Outside, to Verdict, the outcome-market template in this repo. One YES token pays 1 HBAR (Hedera's native currency) when the price at expiry is outside the range: strictly below the lower bound, or at or above the upper bound. Otherwise it pays nothing. One NO token pays the complement, as in every kind, so a YES and a NO together always pay 1 HBAR.
 
-This feature is the worked example in `docs/TUTORIAL.md`, and this recipe automates the AGENTS.md fresh-agent test: an agent that has never seen the repo adds a market kind and finishes with CI green.
+This feature is the worked example in `docs/TUTORIAL.md`. This recipe automates the AGENTS.md fresh-agent test: an agent that has never seen the repo adds a market kind and finishes with CI green.
 
 ## Who it is for
 
@@ -20,17 +20,17 @@ This feature is the worked example in `docs/TUTORIAL.md`, and this recipe automa
 
 ## Feature to implement
 
-The mechanism is shared, so no new logic is needed in `createMarket`, split, merge, resolve, redeem or the router. What is needed is a line in every place the kind list is duplicated. The checklist, in order, with the walkthrough in `docs/TUTORIAL.md`:
+The mechanism is shared, so `createMarket`, split, merge, resolve, redeem and the router need no new logic. What is needed is a line in every place the kind list is copied; the hardhat package cannot import the frontend lib, so the list exists in both. The checklist, in order (`docs/TUTORIAL.md` walks through each step):
 
 Contract
 
-1. Append `Outside` to the `Kind` enum in `packages/hardhat/contracts/interfaces/IVerdict.sol`, after `Scalar`. Append only: enum order is storage layout. Update the `lower` and `upper` struct comments and the `@param upper` NatSpec on `createMarket`.
-2. In `packages/hardhat/contracts/Verdict.sol`, add `Kind.Outside` to the bounds check in `createMarket` (the `upper > lower` check that Between and Scalar share; without it the contract stores `upper = 0`), then add the payoff branch to `_payout` before the Scalar fall-through lines: `answer < lower || answer >= upper` pays in full (100,000,000 tinybars per whole token), otherwise zero.
+1. Append `Outside` to the `Kind` enum in `packages/hardhat/contracts/interfaces/IVerdict.sol`, after `Scalar`. Append only: stored markets record their kind as a number, so reordering would change existing markets. Update the `lower` and `upper` struct comments and the `@param upper` NatSpec on `createMarket`.
+2. In `packages/hardhat/contracts/Verdict.sol`, add `Kind.Outside` to the bounds check in `createMarket` (the `upper > lower` check that Between and Scalar share; without it the contract stores `upper = 0`), then add the payoff branch to `_payout` before the Scalar fall-through lines: `answer < lower || answer >= upper` pays in full (100,000,000 tinybars, the smallest HBAR unit, per whole token), otherwise zero.
 
 Tests
 
 3. Add `Outside = 4` to the `Kind` enum mirror in `packages/hardhat/test/helpers/verdict.ts`; the suite does not compile without it.
-4. In `packages/hardhat/test/Verdict.test.ts`: add Outside to the bounds test (`InvalidBounds` for `upper <= lower`, and a valid creation that reads `upper` back), add a payoff table driven through the `payoutFor` view covering each bound, a value just either side of each bound and a midpoint, and add a complement test against Between. Where the lifecycle tests enumerate kinds, add Outside.
+4. In `packages/hardhat/test/Verdict.test.ts`: add Outside to the bounds test (`InvalidBounds` for `upper <= lower`, and a valid creation that reads `upper` back), add a payoff table driven through the `payoutFor` view covering each bound, values next to each bound and a midpoint, and add a complement test against Between. Where the lifecycle tests enumerate kinds, add Outside.
 5. Widen the random kind range in `packages/hardhat/test/Invariants.property.test.ts` (`fc.nat({ max: 3 })`) to include Outside.
 
 Frontend
@@ -61,7 +61,7 @@ Edge cases that decide correctness: `answer == upper` pays Outside in full and `
 ## Non-goals
 
 - No new logic in `createMarket` beyond the one bounds-check term, and none in split, merge, resolve, redeem or the router. The shared mechanism already handles a new kind.
-- No redeploy of the committed reference deployment in `packages/nextjs/contracts/deployedContracts.ts`; it does not know the new kind, and that is documented rather than fixed here.
+- No redeploy of the committed reference deployment in `packages/nextjs/contracts/deployedContracts.ts`. It does not know the new kind; that is documented rather than fixed here, because a redeploy needs a funded testnet account.
 - No reordering of the `Kind` enum.
 - No new dependencies and no package manager switch.
 - No secrets and no `.env` files committed.
