@@ -226,6 +226,322 @@ const deployedContracts = {
       },
       deployedOnBlock: 41310602,
     },
+    GuardedResolver: {
+      address: "0xED030279D3fc9895aEA124f476fCADBbcB5a20eF",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "contract IResolver",
+              name: "chainlink_",
+              type: "address",
+            },
+            {
+              internalType: "contract ISupraSValueFeed",
+              name: "supra_",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "toleranceBps_",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "maxDelay_",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "supraMaxStaleness_",
+              type: "uint64",
+            },
+            {
+              internalType: "bytes32[]",
+              name: "feedIds",
+              type: "bytes32[]",
+            },
+            {
+              internalType: "uint256[]",
+              name: "supraPairs",
+              type: "uint256[]",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "feedId",
+              type: "bytes32",
+            },
+          ],
+          name: "DuplicateFeed",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "toleranceBps",
+              type: "uint256",
+            },
+          ],
+          name: "InvalidTolerance",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "LengthMismatch",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "NotAContract",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "feedId",
+              type: "bytes32",
+            },
+          ],
+          name: "UnknownFeed",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ZeroDelay",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ZeroStaleness",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "BPS",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_DECIMALS",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "chainlink",
+          outputs: [
+            {
+              internalType: "contract IResolver",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "feedId",
+              type: "bytes32",
+            },
+          ],
+          name: "describe",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "feedId",
+              type: "bytes32",
+            },
+          ],
+          name: "feedDecimals",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "feeds",
+          outputs: [
+            {
+              internalType: "bytes32[]",
+              name: "",
+              type: "bytes32[]",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "maxDelay",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "feedId",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint64",
+              name: "time",
+              type: "uint64",
+            },
+          ],
+          name: "readingAt",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "ok",
+              type: "bool",
+            },
+            {
+              internalType: "int256",
+              name: "answer",
+              type: "int256",
+            },
+            {
+              internalType: "uint8",
+              name: "decimals",
+              type: "uint8",
+            },
+            {
+              internalType: "uint80",
+              name: "roundId",
+              type: "uint80",
+            },
+            {
+              internalType: "uint64",
+              name: "updatedAt",
+              type: "uint64",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "supra",
+          outputs: [
+            {
+              internalType: "contract ISupraSValueFeed",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "supraMaxStaleness",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "feedId",
+              type: "bytes32",
+            },
+          ],
+          name: "supraPairOf",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "toleranceBps",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        describe: "contracts/interfaces/IResolver.sol",
+        feedDecimals: "contracts/interfaces/IResolver.sol",
+        readingAt: "contracts/interfaces/IResolver.sol",
+      },
+      deployedOnBlock: 41352544,
+    },
     Verdict: {
       address: "0x6356954dd331b19F5228F2EdF6029951416C6774",
       abi: [

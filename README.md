@@ -67,6 +67,8 @@ The project works with Yarn and with npm. This README uses Yarn. If you scaffold
 
 Three pages from the running app, as the Playwright route checks capture them at 1280 px wide.
 
+For a full session step by step (browse, trade all four ways, create and seed a market, watch it settle by its schedule, redeem, and read the HCS record), with a screenshot for each step, see [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md).
+
 ![The Verdict home page: six testnet markets shown as cards, each with its question, kind, status, time to expiry and a YES and NO odds bar](docs/img/screenshots/home-light-1280.png)
 
 The home page lists every market on the reference deployment as a card, with its kind, status, time to expiry and the current odds from its pool.
