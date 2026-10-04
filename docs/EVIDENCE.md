@@ -57,6 +57,18 @@ Deployment v1 also shows the manual fallback. After its schedules deferred (see 
 | Redemption in a scalar market at a payout of 0.5 HBAR per YES | [transaction](https://hashscan.io/testnet/transaction/0x1eb0213e9a4600abd1bfde3321b7219fd1e69617537109123cf8167c0e386aad) |
 | Redemption in a binary market with NO paid in full (market 3) | [transaction](https://hashscan.io/testnet/transaction/0x1d32ad4e030053655c8760d2e03a3874b7ff133d3cb8f41136dd48253e58b5f3) |
 
+## A second oracle: GuardedResolver
+
+Market 8 on deployment v2 (HBAR / USD Above 0.1015) was created against `GuardedResolver`, which accepts the Chainlink reading only when Supra's HBAR / USDT price agrees within 1.5 percent. Its schedule settled it one second after expiry with the Chainlink answer 0.10252972, and YES pays 1 HBAR.
+
+| Step | HashScan |
+| --- | --- |
+| `GuardedResolver` deployment | [0xED030279D3fc9895aEA124f476fCADBbcB5a20eF](https://hashscan.io/testnet/contract/0xED030279D3fc9895aEA124f476fCADBbcB5a20eF), [deploy tx](https://hashscan.io/testnet/transaction/0x1dd73da75792080c9fe18ca94627a6ef5ec6f1841451df9fcafb5712d8732e10) |
+| The owner allows it on deployment v2 (`setResolver`) | [transaction](https://hashscan.io/testnet/transaction/0x9fd0cad472c7d1d8fa620f9a373037abfb3d2d6c042d6166033291f5e29ff6a8) |
+| Guarded market creation | [transaction](https://hashscan.io/testnet/transaction/0xb1f77dc40b3902acea0a4039e90c8b40be6945a45fbee74354e8aed5baca69b6), [schedule 0.0.10859082](https://hashscan.io/testnet/schedule/0.0.10859082) |
+| Scheduled settlement through the guard, no account sent it | [scheduled transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791129273-042704926) |
+| HCS messages for the guarded market | [topic 0.0.10844607](https://hashscan.io/testnet/topic/0.0.10844607), messages 14 (`market_created`) and 15 (`market_settled`) |
+
 ## Reference markets
 
 The reference deployment holds markets of every kind and in every state, so a fresh scaffold shows live data and judges can watch markets settle during judging. The daily series market planned as a stretch goal was not built.
