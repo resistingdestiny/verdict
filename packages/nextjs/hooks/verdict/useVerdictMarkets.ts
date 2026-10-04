@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useReadContracts } from "wagmi";
 import { useDeployedContractInfo, useScaffoldReadContract, useTargetNetwork } from "~~/hooks/scaffold-hbar";
 import { isZeroAddress } from "~~/lib/hts";
-import { type Kind, isKind } from "~~/lib/payoff";
+import { type Kind, isKind } from "~~/lib/kinds";
 import { type Market, type MarketView } from "~~/lib/verdict";
 import scaffoldConfig from "~~/scaffold.config";
 

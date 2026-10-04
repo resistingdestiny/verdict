@@ -1,4 +1,4 @@
-import { KIND_DESCRIPTIONS, KIND_LABELS, type Kind } from "~~/lib/payoff";
+import { KIND_DESCRIPTIONS, KIND_NAMES, type Kind } from "~~/lib/kinds";
 
 type KindBadgeProps = {
   kind: Kind;
@@ -8,6 +8,6 @@ type KindBadgeProps = {
 /** The market kind as a small outlined badge. The payoff rule is in the tooltip. */
 export const KindBadge = ({ kind, className = "" }: KindBadgeProps) => (
   <span className={`badge badge-outline badge-sm font-medium ${className}`} title={KIND_DESCRIPTIONS[kind]}>
-    {KIND_LABELS[kind]}
+    {KIND_NAMES[kind]}
   </span>
 );

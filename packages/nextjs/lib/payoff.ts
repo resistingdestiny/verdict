@@ -1,112 +1,31 @@
-import { PAYOUT_SCALE, feedAnswerToPrice, formatUtc } from "./format";
+import { feedAnswerToPrice, formatUtc } from "./format";
+import {
+  type Kind,
+  type MarketTerms,
+  PAYOUT_SCALE,
+  type QuestionFormat,
+  conditionText as conditionTextIn,
+  kindUsesUpper,
+  payoutFor,
+  questionText as questionTextIn,
+} from "./kinds";
 
 /**
- * The payoff rule, mirrored from Verdict.sol so the app can draw diagrams and label markets without a
- * contract call. Adding a kind is one enum value, one branch in `payoutFor` and one test table.
+ * The app's view of the payoff rule in `./kinds`: question and condition text in display formatting, and
+ * the samples the payoff diagram draws. The rule itself, the kind list and the wording live in `./kinds`.
  */
 
-export const Kind = {
-  Above: 0,
-  Below: 1,
-  Between: 2,
-  Scalar: 3,
-} as const;
+/** Display formatting for the app: trimmed decimals and "9 Oct 2026, 16:00 UTC". */
+const APP_FORMAT: QuestionFormat = { price: feedAnswerToPrice, when: formatUtc };
 
-export type Kind = (typeof Kind)[keyof typeof Kind];
-
-export const KINDS: readonly Kind[] = [Kind.Above, Kind.Below, Kind.Between, Kind.Scalar];
-
-export const KIND_LABELS: Record<Kind, string> = {
-  [Kind.Above]: "Above",
-  [Kind.Below]: "Below",
-  [Kind.Between]: "Between",
-  [Kind.Scalar]: "Scalar",
-};
-
-export const KIND_DESCRIPTIONS: Record<Kind, string> = {
-  [Kind.Above]: "YES pays 1 HBAR when the price is above the strike, otherwise nothing.",
-  [Kind.Below]: "YES pays 1 HBAR when the price is below the strike, otherwise nothing.",
-  [Kind.Between]: "YES pays 1 HBAR when the price is at or above the lower bound and below the upper bound.",
-  [Kind.Scalar]:
-    "YES pays a share of 1 HBAR that rises in a straight line from nothing at the floor to all of it at the cap.",
-};
-
-export function isKind(value: number): value is Kind {
-  return KINDS.includes(value as Kind);
-}
-
-/** Whether the kind uses `upper`. Above and Below have a single strike. */
-export function kindUsesUpper(kind: Kind): boolean {
-  return kind === Kind.Between || kind === Kind.Scalar;
-}
-
-/** Bounds are valid when `lower < upper` for two-bound kinds. Single-strike kinds accept any strike. */
-export function boundsValid(kind: Kind, lower: bigint, upper: bigint): boolean {
-  return kindUsesUpper(kind) ? lower < upper : true;
-}
-
-/**
- * The YES payout in tinybars per whole token (0 to 1e8) that `answer` produces, exactly as the contract computes it.
- * Scalar is `(answer - lower) * 1e8 / (upper - lower)` clamped to the range, rounded down.
- */
-export function payoutFor(kind: Kind, lower: bigint, upper: bigint, answer: bigint): bigint {
-  switch (kind) {
-    case Kind.Above:
-      return answer > lower ? PAYOUT_SCALE : 0n;
-    case Kind.Below:
-      return answer < lower ? PAYOUT_SCALE : 0n;
-    case Kind.Between:
-      return answer >= lower && answer < upper ? PAYOUT_SCALE : 0n;
-    case Kind.Scalar: {
-      if (answer <= lower) return 0n;
-      if (answer >= upper) return PAYOUT_SCALE;
-      return ((answer - lower) * PAYOUT_SCALE) / (upper - lower);
-    }
-  }
-}
-
-/** What one NO token pays: 1 HBAR minus the YES payout. */
-export function noPayoutFor(kind: Kind, lower: bigint, upper: bigint, answer: bigint): bigint {
-  return PAYOUT_SCALE - payoutFor(kind, lower, upper, answer);
-}
-
-export type MarketTerms = {
-  feed: string;
-  kind: Kind;
-  lower: bigint;
-  upper: bigint;
-  decimals: number;
-  expiry: bigint | number;
-};
-
-/** The condition in words, without the feed or the time: "be above 0.10". */
+/** The condition in words, without the feed or the time: "be above 0.1". */
 export function conditionText(kind: Kind, lower: bigint, upper: bigint, decimals: number): string {
-  const lo = feedAnswerToPrice(lower, decimals);
-  const hi = feedAnswerToPrice(upper, decimals);
-  switch (kind) {
-    case Kind.Above:
-      return `be above ${lo}`;
-    case Kind.Below:
-      return `be below ${lo}`;
-    case Kind.Between:
-      return `be between ${lo} and ${hi}`;
-    case Kind.Scalar:
-      return `settle between ${lo} and ${hi}`;
-  }
+  return conditionTextIn(kind, lower, upper, decimals, feedAnswerToPrice);
 }
 
-/**
- * The question a market asks, derived from its terms. No free text is stored on the ledger.
- * "Will HBAR / USD be above 0.10 at 9 Oct 2026, 16:00 UTC?"
- */
+/** The question a market asks, in display formatting: "Will HBAR / USD be above 0.1 at 9 Oct 2026, 16:00 UTC?" */
 export function questionText(terms: MarketTerms): string {
-  const when = formatUtc(terms.expiry);
-  const lo = feedAnswerToPrice(terms.lower, terms.decimals);
-  const hi = feedAnswerToPrice(terms.upper, terms.decimals);
-  if (terms.kind === Kind.Scalar) {
-    return `Where between ${lo} and ${hi} will ${terms.feed} be at ${when}?`;
-  }
-  return `Will ${terms.feed} ${conditionText(terms.kind, terms.lower, terms.upper, terms.decimals)} at ${when}?`;
+  return questionTextIn(terms, APP_FORMAT);
 }
 
 /**

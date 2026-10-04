@@ -1,7 +1,8 @@
 import { formatUnits } from "viem";
 import { RESOLVER_ABI, getDeployedContract, verdictPublicClient } from "~~/app/api/_lib/verdict";
+import { isKind, kindName, kindUsesUpper } from "~~/lib/kinds";
 import { evmToContractId, evmToHederaId } from "~~/lib/mirror";
-import { isoDate, kindName, questionText } from "~~/lib/question";
+import { isoDate, questionText } from "~~/lib/question";
 import verdictConfig from "~~/verdict.config";
 
 /**
@@ -179,22 +180,26 @@ export async function marketToJson(id: bigint, raw: RawMarket): Promise<MarketJs
 
   const yesReserve = reserves ? ("yesReserve" in reserves ? reserves.yesReserve : reserves[0]) : null;
   const hbarReserve = reserves ? ("hbarReserve" in reserves ? reserves.hbarReserve : reserves[1]) : null;
-  const usesUpper = raw.kind === 2 || raw.kind === 3;
+  const kind = raw.kind;
+  const known = isKind(kind);
+  const usesUpper = known && kindUsesUpper(kind);
   const settled = raw.status === 1 || raw.status === 2;
 
   return {
     id: Number(id),
-    question: questionText({
-      feed,
-      kind: raw.kind,
-      lower: raw.lower,
-      upper: raw.upper,
-      decimals: raw.decimals,
-      expiry: raw.expiry,
-    }),
+    question: known
+      ? questionText({
+          feed,
+          kind,
+          lower: raw.lower,
+          upper: raw.upper,
+          decimals: raw.decimals,
+          expiry: raw.expiry,
+        })
+      : `Market of unknown kind ${kind}`,
     feed,
     feedId: raw.feedId,
-    kind: kindName(raw.kind),
+    kind: kindName(kind),
     status: STATUS_NAMES[raw.status] ?? `Unknown(${raw.status})`,
     decimals: raw.decimals,
     lower: formatUnits(raw.lower, raw.decimals),

@@ -1,4 +1,4 @@
-import { type Kind } from "./payoff";
+import { type Kind } from "./kinds";
 import type { Address, Hex } from "viem";
 
 /** The `Market` struct as `getMarket` returns it through viem. */

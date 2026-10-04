@@ -1,11 +1,10 @@
 import { formatUnits } from "viem";
+import { isKind, kindName, kindUsesUpper } from "~~/lib/kinds";
 
 /**
  * The two HCS message shapes of the Verdict record. Messages are built from chain
  * data only (mirror node events and contract views), never from request bodies.
  */
-
-export const KIND_NAMES = ["Above", "Below", "Between", "Scalar"] as const;
 
 export const MESSAGE_MAX_BYTES = 1000;
 
@@ -96,14 +95,14 @@ export function buildMarketCreatedMessage(
     tx: string | null;
   },
 ): MarketCreatedMessage {
-  const usesUpper = args.kind === 2 || args.kind === 3;
+  const usesUpper = isKind(args.kind) && kindUsesUpper(args.kind);
   return {
     v: 1,
     type: "market_created",
     market: Number(args.id),
     contract: ids.contract,
     feed: ids.feed,
-    kind: KIND_NAMES[args.kind] ?? `Unknown(${args.kind})`,
+    kind: kindName(args.kind),
     lower: formatUnits(args.lower, args.decimals),
     upper: usesUpper ? formatUnits(args.upper, args.decimals) : null,
     expiry: isoSeconds(args.expiry),

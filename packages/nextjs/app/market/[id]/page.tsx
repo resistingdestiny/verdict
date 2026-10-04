@@ -20,7 +20,8 @@ import { useFeeds, useLivePrice, useVerdictMarket } from "~~/hooks/verdict";
 import { aggregatorFromFeedId, knownFeedLabel } from "~~/lib/feeds";
 import { feedAnswerToPrice, formatTimeToExpiry, formatUtc, shortHex, tinybarsToHbar } from "~~/lib/format";
 import { isZeroAddress } from "~~/lib/hts";
-import { KIND_DESCRIPTIONS, conditionText, questionText } from "~~/lib/payoff";
+import { KIND_DESCRIPTIONS } from "~~/lib/kinds";
+import { conditionText, questionText } from "~~/lib/payoff";
 import { marketPhase, nowSeconds } from "~~/lib/verdict";
 
 type MarketPageProps = {

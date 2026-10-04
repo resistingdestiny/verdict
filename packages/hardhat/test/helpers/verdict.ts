@@ -10,6 +10,10 @@ import type {
   Verdict,
 } from "../../typechain-types";
 import { installHederaMocks, now, ONE_HBAR } from "./hedera";
+import { Kind } from "../../../nextjs/lib/kinds";
+
+/** The market kinds, from the one TypeScript definition the app and the scripts share. */
+export { Kind };
 
 export const PHASE = 1n << 64n;
 export const HOUR = 3600n;
@@ -17,13 +21,6 @@ export const DAY = 24n * HOUR;
 export const SIX_HOURS = 6n * HOUR;
 export const RESERVE = 5n * ONE_HBAR;
 export const INT64_MAX = (1n << 63n) - 1n;
-
-export enum Kind {
-  Above = 0,
-  Below = 1,
-  Between = 2,
-  Scalar = 3,
-}
 
 export enum Status {
   Open = 0,

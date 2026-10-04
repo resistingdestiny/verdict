@@ -12,17 +12,13 @@ You need a scaffolded project with its dependencies installed (see Quickstart in
 yarn hardhat:test
 ```
 
-You do not need a funded account. Everything here runs on local mocks of the Hedera services, until the optional redeploy in step 17.
+You do not need a funded account. Everything here runs on local mocks of the Hedera services, until the optional redeploy in step 8.
 
-## Why there are seventeen steps
+## Why there are eight steps
 
-The mechanism is shared, so `createMarket`, split, merge, the router trades, scheduled resolution and redemption need no new logic. What a new kind does need is a line in every place the kind list is copied, and there are more of those than the contract alone suggests. The list lives in the Solidity enum, a TypeScript mirror in the test helpers, the frontend lib, the question text, the JSON API, the HCS message builders, the operational scripts and the docs. It is copied because the hardhat package cannot import the frontend lib. This command finds every copy:
+The mechanism is shared, so `createMarket`, split, merge, the router trades, scheduled resolution and redemption need no new logic. A new kind needs three edits in the contract and one TypeScript module, `packages/nextjs/lib/kinds.ts`. That module is the only TypeScript definition of the kinds. The app, the JSON API, the HCS message builders, `/llms.txt`, the operational scripts and the contract test helpers all import it, so they pick up the new kind without edits of their own. The rest is tests and docs.
 
-```bash
-rg -n "Kind.Scalar|kind === 3|Scalar" packages
-```
-
-Work through the checklist in order. Each step names its file. The groups are contract, tests, frontend, API and record, scripts, docs.
+Work through the checklist in order. Each step names its file. The groups are contract, TypeScript, tests, docs.
 
 ## The checklist
 
@@ -31,35 +27,20 @@ Contract
 1. `packages/hardhat/contracts/interfaces/IVerdict.sol`: append `Outside` to `Kind`; update the `lower` and `upper` struct comments and the `@param upper` NatSpec on `createMarket`.
 2. `packages/hardhat/contracts/Verdict.sol`: add Outside to the bounds check in `createMarket`, then add the payoff branch in `_payout` before the Scalar lines.
 
+TypeScript
+
+3. `packages/nextjs/lib/kinds.ts`: `Outside: 4` in `Kind`, `KINDS`, `KIND_NAMES`, `KIND_DESCRIPTIONS`, `kindUsesUpper`, the `payoutFor` switch and the `conditionText` switch. The contract tests do not compile without `Kind.Outside`.
+
 Tests
 
-3. `packages/hardhat/test/helpers/verdict.ts`: add `Outside = 4` to the `Kind` enum mirror. The test suite does not compile without it.
 4. `packages/hardhat/test/Verdict.test.ts`: add Outside to the bounds test, add a payoff table, and add a complement test against Between.
 5. `packages/hardhat/test/Invariants.property.test.ts`: widen the random kind range (`fc.nat({ max: 3 })`, at about line 44) to include Outside.
-
-Frontend
-
-6. `packages/nextjs/lib/payoff.ts`: the `Kind` const, `KINDS`, `KIND_LABELS`, `KIND_DESCRIPTIONS`, `kindUsesUpper`, the `payoutFor` switch and the `conditionText` switch.
-7. `packages/nextjs/lib/question.ts`: `KIND_NAMES` and the `questionText` switch. Without this an Outside market gets the Scalar wording.
-8. `packages/nextjs/components/PayoffDiagram.tsx`: the upper-bound marker condition.
-9. `packages/nextjs/lib/__tests__/payoff.test.ts`: rows for the new kind in every `describe` block that enumerates kinds.
-
-API and record
-
-10. `packages/nextjs/app/api/_lib/markets.ts`: the `usesUpper` test that decides whether `/api/markets` returns `upper`.
-11. `packages/nextjs/app/api/_lib/messages.ts`: `KIND_NAMES` and the `usesUpper` test for the `market_created` HCS message.
-12. `packages/nextjs/app/llms.txt/route.ts`: one line describing the kind for agents.
-
-Scripts
-
-13. `packages/hardhat/scripts/lib/testnetMarket.ts`: `KIND` and `KIND_NAMES`.
-14. `packages/hardhat/scripts/create-market.ts`: the `KINDS` map and the `needsUpper` test.
-15. `packages/hardhat/scripts/record-sync.ts`: `KIND_NAMES` and the `usesUpper` test.
+6. `packages/nextjs/lib/__tests__/payoff.test.ts`: rows for the new kind in every `describe` block that enumerates kinds.
 
 Docs
 
-16. `README.md`, under the heading "The four market kinds": rename the heading, add a paragraph for the kind and a payoff diagram at `docs/img/payoff-outside.svg`.
-17. Redeploy, or note that the committed reference deployment does not know the new kind (see "The reference deployment" below).
+7. `README.md`, under the heading "The four market kinds": rename the heading, add a paragraph for the kind and a payoff diagram at `docs/img/payoff-outside.svg`.
+8. Redeploy, or note that the committed reference deployment does not know the new kind (see "The reference deployment" below).
 
 The sections below explain each step.
 
@@ -111,21 +92,31 @@ A branch placed after the Scalar lines is unreachable. `ONE_HBAR` is 100,000,000
 
 Mind the edges. Between pays inside `[lower, upper)`, and Outside pays outside it. So `answer == upper` pays Outside in full, and `answer == lower` pays it nothing. Match these edges in the test table, or the two kinds stop being complements.
 
-## 3. The test helper
+## 3. The kinds module
 
-`packages/hardhat/test/helpers/verdict.ts` mirrors the Solidity enum for the tests:
+`packages/nextjs/lib/kinds.ts` holds the kind values (mirroring the Solidity enum), their names and descriptions, which kinds use an upper bound, the payoff rule, and the condition and question wording. It has no imports, so the hardhat package loads it by relative path (`../../nextjs/lib/kinds`) without React, Next or viem. Add Outside in each place the file lists kinds:
+
+- the `Kind` const: `Outside: 4`, the same number as the Solidity enum
+- `KINDS` (the Create page offers exactly this list) and `KIND_NAMES` (the name the JSON API, the HCS record and `KIND=` in the scripts use)
+- `KIND_DESCRIPTIONS`: one sentence in the voice of the others. The kind badge tooltip, the market page and `/llms.txt` show it.
+- `kindUsesUpper`: Outside has two bounds, like Between and Scalar. `boundsValid`, the diagram's upper-bound marker, `upper` in `/api/markets` and in the HCS message, and the `UPPER=` requirement in `create-market.ts` all follow from it.
+- the `payoutFor` switch, with the same rule as the contract branch:
 
 ```typescript
-export enum Kind {
-  Above = 0,
-  Below = 1,
-  Between = 2,
-  Scalar = 3,
-  Outside = 4,
-}
+case Kind.Outside:
+  return answer < lower || answer >= upper ? PAYOUT_SCALE : 0n;
 ```
 
-Add the line. Every test file imports this enum, so until it is there `Kind.Outside` does not exist and the suite does not compile.
+- the `conditionText` switch:
+
+```typescript
+case Kind.Outside:
+  return `be outside ${lo} and ${hi}`;
+```
+
+Neither switch has a default, so `yarn next:check-types` and `yarn hardhat:check-types` fail until both have an Outside case. `questionText` reads "Will {feed} {condition} at {time}?" for every kind except Scalar, which has its own sentence, so Outside needs no branch there. The app shows the example market as "Will HBAR / USD be outside 0.1 and 0.12 at 9 Oct 2026, 16:00 UTC?", and the JSON API and the HCS record use the same words with an ISO 8601 time. Bounds are printed in human units with trailing zeros trimmed, so 10,000,000 at 8 decimals prints `0.1`, not `0.10`.
+
+The contract test helper `packages/hardhat/test/helpers/verdict.ts` re-exports `Kind` from this file, so `Kind.Outside` now exists in the tests. After this, the Create page offers Outside and `FEED=HBAR/USD KIND=Outside LOWER=0.10 UPPER=0.12 EXPIRY=... yarn hardhat:create-market` accepts it.
 
 ## 4. The contract tests
 
@@ -167,78 +158,22 @@ VERDICT_PROPERTY_RUNS=50 yarn hardhat:test:property
 
 CI runs 200 sequences and the default is 1000; use fewer locally while iterating.
 
-## 6. The frontend lib
+## 6. The frontend tests
 
-`packages/nextjs/lib/payoff.ts` mirrors the contract's payoff, so the app can label markets, validate bounds and draw diagrams without a contract call. Add Outside in each place the kinds are listed:
-
-- the `Kind` const (`Outside: 4`), the `KINDS` list (the Create page offers exactly this list), `KIND_LABELS` and `KIND_DESCRIPTIONS`
-- `kindUsesUpper`: Outside has two bounds, like Between and Scalar. `boundsValid` follows from it.
-- the `payoutFor` switch, with the same rule as the contract branch:
-
-```typescript
-case Kind.Outside:
-  return answer < lower || answer >= upper ? PAYOUT_SCALE : 0n;
-```
-
-- the `conditionText` switch, for example `be outside ${lo} and ${hi}`
-
-Bounds are printed in human units with trailing zeros trimmed, so 10,000,000 at 8 decimals prints `0.1`, not `0.10`.
-
-## 7. The question text
-
-`packages/nextjs/lib/question.ts` is a second copy of the kind names. The JSON API and the HCS record use it, because they are built on the server from ledger data and do not import the frontend lib's React-facing helpers. Add `Outside` to its `KIND_NAMES` and a case to `questionText`:
-
-```typescript
-case "Outside":
-  return `Will ${feed} be outside ${lower} and ${upper} at ${when}?`;
-```
-
-The switch's `default` is the Scalar wording ("Where will ... land between"). An Outside market without this case reads as a Scalar question in `/api/markets` and on HCS. With it, the example market reads "Will HBAR / USD be outside 0.1 and 0.12 at 9 Oct 2026, 16:00 UTC?".
-
-## 8. The payoff diagram
-
-`packages/nextjs/components/PayoffDiagram.tsx` samples `payoffPoints` from `lib/payoff.ts` across the price range, so the new `payoutFor` branch already draws the right shape: YES pays 1 HBAR below the lower bound and from the upper bound up, and nothing between them. The one edit is the upper-bound marker, which is a hard-coded kind test:
-
-```typescript
-if (kind === 2 || kind === 3) markers.push({ price: upper, label: feedAnswerToPrice(upper, decimals, 4) });
-```
-
-Replace the condition with `kindUsesUpper(kind)` from `lib/payoff.ts`. Follow that pattern everywhere a file asks "does this kind use `upper`": one helper and no literal kind numbers, so the next kind is one edit instead of six.
-
-## 9. The frontend tests
-
-`packages/nextjs/lib/__tests__/payoff.test.ts` has a payoff table per kind, a loop over all kinds checking that YES plus NO is 1 HBAR, and `describe` blocks for `kindUsesUpper`, `boundsValid`, `questionText`, `conditionText` and the diagram helpers. Add Outside to each, including an Outside row in the all-kinds loop, then run:
+`packages/nextjs/lib/__tests__/payoff.test.ts` has a payoff table per kind, a loop over `KINDS` checking that YES plus NO is 1 HBAR, and `describe` blocks for `kindUsesUpper`, `boundsValid`, `questionText`, `conditionText`, the kind names and the diagram helpers. Add an Outside payoff table, Outside rows to `kindUsesUpper`, `questionText` and `conditionText`, and extend the "kind names" test, which pins the enum order and the names. Then run:
 
 ```bash
 yarn next:test
 ```
 
-## 10 to 12. The API, the record and llms.txt
-
-Three server-side files carry their own copy of the kind list or of the "uses upper" test:
-
-- `packages/nextjs/app/api/_lib/markets.ts`: `const usesUpper = raw.kind === 2 || raw.kind === 3;` decides whether `/api/markets` returns `upper` or `null`. Replace it with `isKind(raw.kind) && kindUsesUpper(raw.kind)` from `~~/lib/payoff`.
-- `packages/nextjs/app/api/_lib/messages.ts`: `KIND_NAMES` names the kind in the `market_created` HCS message, and the same `usesUpper` test decides whether the message carries `upper`. Add the name and use `kindUsesUpper` here too.
-- `packages/nextjs/app/llms.txt/route.ts`: the kinds are listed one per line for agents. Add a line for Outside in the same voice as the others.
-
-## 13 to 15. The scripts
-
-The hardhat package cannot import the frontend lib, so the operational scripts keep their own kind lists:
-
-- `packages/hardhat/scripts/lib/testnetMarket.ts`: `KIND` and `KIND_NAMES`. Add a `kindUsesUpper(kind)` helper next to them so the other scripts can share it.
-- `packages/hardhat/scripts/create-market.ts`: has its own `KINDS` map and `const needsUpper = kind === 2 || kind === 3;`. Import `KIND` and `kindUsesUpper` from `./lib/testnetMarket` instead, which removes one copy of the list.
-- `packages/hardhat/scripts/record-sync.ts`: `KIND_NAMES` and another `usesUpper` test. This script builds the HCS messages itself because it runs without viem, so keep it in step with `messages.ts`.
-
-After this, `FEED=HBAR/USD KIND=Outside LOWER=0.10 UPPER=0.12 EXPIRY=... yarn hardhat:create-market` accepts the new kind.
-
-## 16. The docs
+## 7. The docs
 
 - `README.md` has a section headed "The four market kinds". Rename it, add a paragraph for Outside in the same shape as the others, and add `docs/img/payoff-outside.svg`. Each kind has a payoff SVG there. Copy `payoff-between.svg`, swap the YES and NO paths (Outside is Between inverted) and update the `aria-label`.
 - Search the docs for the old count: `rg -n "four kinds|four market kinds|Scalar" README.md AGENTS.md docs`.
 
-## 17. The reference deployment
+## 8. The reference deployment
 
-`packages/nextjs/contracts/deployedContracts.ts` is the committed reference deployment on Hedera testnet, and that contract does not know the new kind. The Create page builds its kind menu from `KINDS` in `lib/payoff.ts`, so after this change it offers Outside against a contract whose enum ends at Scalar. The call then reverts, because the ABI decoder rejects an enum value that is out of range. Redeploy and commit the regenerated `deployedContracts.ts`:
+`packages/nextjs/contracts/deployedContracts.ts` is the committed reference deployment on Hedera testnet, and that contract does not know the new kind. The Create page builds its kind menu from `KINDS` in `lib/kinds.ts`, so after this change it offers Outside against a contract whose enum ends at Scalar. The call then reverts, because the ABI decoder rejects an enum value that is out of range. Redeploy and commit the regenerated `deployedContracts.ts`:
 
 ```bash
 yarn hardhat:deploy:testnet
@@ -251,7 +186,7 @@ This needs a funded testnet account; the README's "Deploy your own" section cove
 Format only the files you changed. `yarn format` runs Prettier over both packages and reformats unrelated files if any have drifted:
 
 ```bash
-yarn workspace @sh/nextjs prettier --write lib/payoff.ts lib/question.ts components/PayoffDiagram.tsx
+yarn workspace @sh/nextjs prettier --write lib/kinds.ts lib/__tests__/payoff.test.ts
 yarn workspace @sh/hardhat prettier --write contracts/Verdict.sol contracts/interfaces/IVerdict.sol test/Verdict.test.ts
 ```
 

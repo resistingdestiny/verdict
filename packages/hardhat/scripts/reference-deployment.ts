@@ -2,9 +2,8 @@ import { ethers } from "hardhat";
 import { TESTNET_ADDRESSES } from "../config/addresses";
 import { EVIDENCE_PATH, Ledger, appendTableRow, formatHbar } from "./lib/evidence";
 import { hashscanContract } from "./lib/hashscan";
+import { Kind, kindName } from "../../nextjs/lib/kinds";
 import {
-  KIND,
-  KIND_NAMES,
   TestnetContext,
   balanceTinybars,
   createMarket,
@@ -62,7 +61,7 @@ const PLANS: Plan[] = [
   {
     key: "hbar-above-below-spot",
     feedName: "HBAR/USD",
-    kind: KIND.Above,
+    kind: Kind.Above,
     lowerPercent: 95,
     upperPercent: 0,
     expiryIso: null,
@@ -71,7 +70,7 @@ const PLANS: Plan[] = [
   {
     key: "hbar-above-above-spot",
     feedName: "HBAR/USD",
-    kind: KIND.Above,
+    kind: Kind.Above,
     lowerPercent: 105,
     upperPercent: 0,
     expiryIso: null,
@@ -80,7 +79,7 @@ const PLANS: Plan[] = [
   {
     key: "hbar-scalar-short",
     feedName: "HBAR/USD",
-    kind: KIND.Scalar,
+    kind: Kind.Scalar,
     lowerPercent: 80,
     upperPercent: 120,
     expiryIso: null,
@@ -89,7 +88,7 @@ const PLANS: Plan[] = [
   {
     key: "btc-below",
     feedName: "BTC/USD",
-    kind: KIND.Below,
+    kind: Kind.Below,
     lowerPercent: 105,
     upperPercent: 0,
     expiryIso: "2026-10-09T16:00:00Z",
@@ -98,7 +97,7 @@ const PLANS: Plan[] = [
   {
     key: "eth-between",
     feedName: "ETH/USD",
-    kind: KIND.Between,
+    kind: Kind.Between,
     lowerPercent: 90,
     upperPercent: 110,
     expiryIso: "2026-10-14T16:00:00Z",
@@ -107,7 +106,7 @@ const PLANS: Plan[] = [
   {
     key: "hbar-scalar-long",
     feedName: "HBAR/USD",
-    kind: KIND.Scalar,
+    kind: Kind.Scalar,
     lowerPercent: 80,
     upperPercent: 120,
     expiryIso: "2026-10-30T16:00:00Z",
@@ -137,7 +136,7 @@ function describe(plan: Plan): string {
     plan.upperPercent === 0
       ? `strike ${plan.lowerPercent < 100 ? `${100 - plan.lowerPercent} percent below` : `${plan.lowerPercent - 100} percent above`} spot`
       : `range ${100 - plan.lowerPercent} percent around spot`;
-  return `${plan.feedName.replace("/", " / ")} ${KIND_NAMES[plan.kind]}, ${bounds}, ${plan.expiryIso ?? "30 minutes"}`;
+  return `${plan.feedName.replace("/", " / ")} ${kindName(plan.kind)}, ${bounds}, ${plan.expiryIso ?? "30 minutes"}`;
 }
 
 async function deployOne(ctx: TestnetContext, ledger: Ledger, plan: Plan): Promise<void> {
@@ -161,7 +160,7 @@ async function deployOne(ctx: TestnetContext, ledger: Ledger, plan: Plan): Promi
       EVIDENCE_PATH,
       SECTION,
       HEADER,
-      `| ${describe(plan)} | ${KIND_NAMES[plan.kind]} | ${new Date(expiry * 1000).toISOString()} | ${market.id} | [pool](${hashscanContract(pair)}) | ${plan.purpose} |`,
+      `| ${describe(plan)} | ${kindName(plan.kind)} | ${new Date(expiry * 1000).toISOString()} | ${market.id} | [pool](${hashscanContract(pair)}) | ${plan.purpose} |`,
     );
     return { noEvidence: true, data: { id: market.id.toString(), pair } };
   });

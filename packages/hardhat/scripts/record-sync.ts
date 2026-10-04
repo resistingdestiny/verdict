@@ -14,6 +14,7 @@ import {
   getContractResultByHash,
   transactionIdAt,
 } from "../../nextjs/lib/mirror";
+import { isKind, kindName, kindUsesUpper } from "../../nextjs/lib/kinds";
 
 /**
  * Walks every Verdict market and writes any missing HCS record messages.
@@ -33,7 +34,6 @@ const RPC_URL = process.env.HEDERA_RPC_URL ?? "https://testnet.hashio.io/api";
 const MIRROR_BASE_URL = process.env.HEDERA_MIRROR_URL ?? "https://testnet.mirrornode.hedera.com";
 const MESSAGE_MAX_BYTES = 1000;
 
-const KIND_NAMES = ["Above", "Below", "Between", "Scalar"] as const;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const MARKET_CREATED_SIG =
@@ -194,14 +194,14 @@ async function buildMarketCreated(id: bigint, market: MarketView, verdictAddress
   }
   const txHash = await findEventHash(verdictAddress, MARKET_CREATED_SIG, id);
   const kind = Number(market.kind);
-  const usesUpper = kind === 2 || kind === 3;
+  const usesUpper = isKind(kind) && kindUsesUpper(kind);
   return {
     v: 1,
     type: "market_created",
     market: Number(id),
     contract: await evmToContractId(verdictAddress, { baseUrl: MIRROR_BASE_URL }),
     feed,
-    kind: KIND_NAMES[kind] ?? `Unknown(${kind})`,
+    kind: kindName(kind),
     lower: ethers.formatUnits(market.lower, market.decimals),
     upper: usesUpper ? ethers.formatUnits(market.upper, market.decimals) : null,
     expiry: isoSeconds(market.expiry),

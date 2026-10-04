@@ -1,6 +1,6 @@
 import { useDeployedContractInfo, useScaffoldReadContract } from "~~/hooks/scaffold-hbar";
 import { isZeroAddress } from "~~/lib/hts";
-import { type Kind, isKind } from "~~/lib/payoff";
+import { type Kind, isKind } from "~~/lib/kinds";
 import { type Market, type MarketView } from "~~/lib/verdict";
 
 /** How a single market read stands. "missing" means the contract answered that no such market exists. */
