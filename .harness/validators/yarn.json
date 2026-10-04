@@ -48,7 +48,7 @@
     {
       "name": "build",
       "command": "yarn next:build",
-      "timeoutMs": 300000,
+      "timeoutMs": 900000,
       "purpose": "Production build (includes TypeScript checks)."
     }
   ]

@@ -129,7 +129,7 @@ describe("kind names", () => {
 
   it("maps names to kinds and back, and labels unknown values", () => {
     for (const kind of KINDS) expect(kindFromName(kindName(kind))).toBe(kind);
-    expect(kindFromName("Outside")).toBeUndefined();
+    expect(kindFromName("Inside")).toBeUndefined();
     expect(kindName(KINDS.length)).toBe(`Unknown(${KINDS.length})`);
     expect(isKind(Kind.Scalar)).toBe(true);
     expect(isKind(KINDS.length)).toBe(false);

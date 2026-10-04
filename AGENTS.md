@@ -159,14 +159,14 @@ TypeScript
 
 Tests
 
-4. `packages/hardhat/test/Verdict.test.ts`: the bounds test (`InvalidBounds` for `upper <= lower`, and a valid creation that reads `upper` back), a payoff table through `payoutFor` covering each bound, a value on either side of it and a midpoint, and the lifecycle tests where they enumerate kinds.
+4. `packages/hardhat/test/Verdict.test.ts`: the bounds test (`InvalidBounds` for `upper <= lower`, and a valid creation that reads `upper` back), the int128 bounds test if the kind uses both bounds, a payoff table through `payoutFor` covering each bound, a value on either side of it and a midpoint, a complement test where the new kind mirrors an existing one (Outside plus Between always pays 1 HBAR), and the lifecycle tests where they enumerate kinds.
 5. `packages/hardhat/test/Invariants.property.test.ts`: the random kind range, `fc.nat({ max: 3 })` at about line 44. It shows as pending under `yarn hardhat:test` and runs under `yarn hardhat:test:property`.
-6. `packages/nextjs/lib/__tests__/payoff.test.ts`: rows in every block that enumerates kinds, including "kind names", which pins the enum order.
+6. `packages/nextjs/lib/__tests__/payoff.test.ts`: rows in every block that enumerates kinds, including "kind names", which pins the enum order. (The test of an unknown name uses "Inside", so it keeps passing.)
 
 Docs and deployment
 
-7. `README.md`, heading "The four market kinds": rename it, add the paragraph and a payoff SVG under `docs/img/` (one per kind).
-8. The committed reference deployment in `packages/nextjs/contracts/deployedContracts.ts` does not know a new kind. Redeploy with `yarn hardhat:deploy:testnet` and commit the regenerated file, or the Create page offers a kind the live contract rejects.
+7. `README.md`, the market kinds section (headed "The four market kinds" today): rename it, add the paragraph and a payoff SVG under `docs/img/` (one per kind). Leave `docs/DECISIONS.md`, `docs/EVIDENCE.md` and `docs/COSTS.md` alone; they record the existing deployment.
+8. The committed reference deployment in `packages/nextjs/contracts/deployedContracts.ts` does not know a new kind. Redeploy with `yarn hardhat:deploy:testnet` and commit the regenerated file. If you keep the reference deployment instead, say so in the README paragraph for the kind, because the Create page will offer a kind the live contract rejects.
 
 To confirm nothing was missed, `rg -n "Kind.Scalar|Scalar" packages` should list only the contract, `lib/kinds.ts`, the tests and the reference-deployment plan in `scripts/reference-deployment.ts`.
 

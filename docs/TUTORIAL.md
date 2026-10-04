@@ -40,7 +40,7 @@ Tests
 Docs
 
 7. `README.md`, under the heading "The four market kinds": rename the heading, add a paragraph for the kind and a payoff diagram at `docs/img/payoff-outside.svg`.
-8. Redeploy, or note that the committed reference deployment does not know the new kind (see "The reference deployment" below).
+8. Redeploy with `yarn hardhat:deploy:testnet` and commit the regenerated `deployedContracts.ts`. If you keep the committed reference deployment instead, say so in the README paragraph for the new kind, because that deployment rejects it (see "The reference deployment" below).
 
 The sections below explain each step.
 
@@ -83,7 +83,7 @@ if (kind == Kind.Above) return answer > lower ? ONE_HBAR : 0;
 if (kind == Kind.Below) return answer < lower ? ONE_HBAR : 0;
 if (kind == Kind.Between) return (answer >= lower && answer < upper) ? ONE_HBAR : 0;
 if (kind == Kind.Outside) return (answer < lower || answer >= upper) ? ONE_HBAR : 0; // new
-if (answer <= lower) return 0; // Scalar from here on
+if (answer <= lower) return 0; // the three Scalar lines start here
 if (answer >= upper) return ONE_HBAR;
 return uint64((uint256(answer - lower) * ONE_HBAR) / uint256(upper - lower));
 ```
@@ -142,7 +142,7 @@ The payoff tables in `describe("payoff tables")` are a `tables` array of `{ kind
 | 1000 | 2000 | 2000 | 1 HBAR |
 | 1000 | 2000 | 2500 | 1 HBAR |
 
-Then add a complement test: for every answer in the table, `payoutFor(Between, ...) + payoutFor(Outside, ...)` equals 1 HBAR. Where the lifecycle tests enumerate kinds, add Outside so it gets a full create, split, settle and redeem run as well.
+Also add the new kind to the int128 bounds test (it lists the kinds that use both bounds). Then add a complement test: for every answer in the table, `payoutFor(Between, ...) + payoutFor(Outside, ...)` equals 1 HBAR. Where the lifecycle tests enumerate kinds, add Outside so it gets a full create, split, settle and redeem run as well.
 
 ```bash
 yarn hardhat:test test/Verdict.test.ts
@@ -169,7 +169,7 @@ yarn next:test
 ## 7. The docs
 
 - `README.md` has a section headed "The four market kinds". Rename it, add a paragraph for Outside in the same shape as the others, and add `docs/img/payoff-outside.svg`. Each kind has a payoff SVG there. Copy `payoff-between.svg`, swap the YES and NO paths (Outside is Between inverted) and update the `aria-label`.
-- Search the docs for the old count: `rg -n "four kinds|four market kinds|Scalar" README.md AGENTS.md docs`.
+- Search the docs for the old count: `rg -n "four kinds|four market kinds|Scalar" README.md AGENTS.md docs`. Update README.md, AGENTS.md and this tutorial; leave `docs/DECISIONS.md`, `docs/EVIDENCE.md` and `docs/COSTS.md` alone, because they record what happened on the existing deployment.
 
 ## 8. The reference deployment
 
@@ -187,7 +187,7 @@ Format only the files you changed. `yarn format` runs Prettier over both package
 
 ```bash
 yarn workspace @sh/nextjs prettier --write lib/kinds.ts lib/__tests__/payoff.test.ts
-yarn workspace @sh/hardhat prettier --write contracts/Verdict.sol contracts/interfaces/IVerdict.sol test/Verdict.test.ts
+yarn workspace @sh/hardhat prettier --write contracts/Verdict.sol contracts/interfaces/IVerdict.sol test/Verdict.test.ts test/Invariants.property.test.ts
 ```
 
 The husky pre-commit hook runs lint-staged, which runs `next lint --fix` and the frontend `tsc` over staged frontend files and `eslint --fix` over staged hardhat files. On a slow machine that takes minutes. After running the checks below by hand, `git commit --no-verify` is acceptable.
