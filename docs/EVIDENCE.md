@@ -1,10 +1,12 @@
 # Evidence
 
-One HashScan link per step of the market lifecycle on the reference deployment, Hedera testnet. The hand-written tables at the top summarise; the sections "Testnet run log", "Reference markets created" and "Verified contracts" below are appended by the scripts (`e2e-testnet`, `reference-deployment`, `verify-all`) with one row per transaction, its id, gas and HBAR charged. Links point at `https://hashscan.io/testnet`.
+This file links every step of the market lifecycle to its record on HashScan, Hedera's public explorer, for the reference deployment on Hedera testnet. The tables at the top are written by hand and pick out the headline links. The three sections at the end ("Verified contracts", "Testnet run log" and "Reference markets created") are appended by the scripts (`verify-all`, `e2e-testnet`, `reference-deployment`), one row per transaction. Gas and HBAR for each transaction are in [COSTS.md](COSTS.md). All links point at `https://hashscan.io/testnet`.
+
+Two kinds of identifier appear. Contracts and tokens have EVM addresses (`0x...`). Hedera also numbers every entity (account, token, topic, schedule) in the form `0.0.N`, and names each transaction `payer@seconds.nanos`, which HashScan writes as `payer-seconds-nanos`. A schedule entity is the ledger's record of a scheduled call: it shows when the call is due and, once it has run, the transaction it produced.
 
 ## Contract deployments
 
-Two deployments exist on Hedera testnet. Deployment v1 ran the first full lifecycle and exposed the scheduled-run timing defect described in `docs/SECURITY.md` (its market 0 deferred with "not expired", its market 1 settled on schedule). Deployment v2 carries the fix and holds the judged reference markets; the app points at v2. `ChainlinkResolver` is shared.
+Two deployments exist on Hedera testnet. Deployment v1 ran the first full lifecycle and exposed the scheduled-run timing defect described in [SECURITY.md](SECURITY.md#scheduled-run-timing): its market 0 deferred with "not expired", while its market 1 settled on schedule. Deployment v2 carries the fix and holds the judged reference markets, and the app points at it. `ChainlinkResolver` is shared by both.
 
 | Contract | Deployment | Address | HashScan | Verified |
 | --- | --- | --- | --- | --- |
@@ -15,12 +17,12 @@ Two deployments exist on Hedera testnet. Deployment v1 ran the first full lifecy
 | `VerdictRouter` | v1 | `0x14787283fb39Dc4f2524ec1Bc4c69568137378ae` | [contract](https://hashscan.io/testnet/contract/0x14787283fb39Dc4f2524ec1Bc4c69568137378ae), [deploy tx](https://hashscan.io/testnet/transaction/0x6a5aad55e31c4153df3e7cd5d9ee1a51733bbbcce4994154521d5c3c2932b31d) | Sourcify exact match |
 | HCS topic | v2 (current) | `0.0.10844607` | [topic](https://hashscan.io/testnet/topic/0.0.10844607) | |
 | HCS topic | v1 | `0.0.10844224` | [topic](https://hashscan.io/testnet/topic/0.0.10844224) | |
-| `VerdictSeries` (stretch) | cut | | | |
-| `GuardedResolver` (stretch) | cut | | | |
+
+Two stretch contracts, `VerdictSeries` and `GuardedResolver`, were designed but not built. [ARCHITECTURE.md](ARCHITECTURE.md#designed-but-not-built) sketches them.
 
 ## Lifecycle, one market end to end
 
-Market 1 of deployment v1 (HBAR / USD Above, 10 minutes, created 2026-10-03 16:07 UTC) went through every step. The rows under "Testnet run log" below carry one HashScan link per step with the gas and HBAR charged; the headline links are:
+Market 1 of deployment v1 (HBAR / USD Above, 10 minutes, created 2026-10-03 16:07 UTC) went through every step. The "Testnet run log" below has one row per step; the headline links are:
 
 | Step | HashScan |
 | --- | --- |
@@ -37,7 +39,7 @@ Market 1 of deployment v1 (HBAR / USD Above, 10 minutes, created 2026-10-03 16:0
 | Redemption in a binary market (YES at 1 HBAR, NO at 0) | [transaction](https://hashscan.io/testnet/transaction/0x080c12a9564a24d9e33d2a3730e2a1ce2c8a4bd94015c1b912331599de690143) |
 | HCS messages for creation and settlement | [topic 0.0.10844224](https://hashscan.io/testnet/topic/0.0.10844224), messages 2 (`market_created`) and 4 (`market_settled`) |
 
-Deployment v2 (the fixed contract) repeated the lifecycle on its market 3 (HBAR / USD Above, 10 minutes, created 2026-10-03 17:10 UTC): split, pool, the four trades, then the schedule settled it on its own:
+Deployment v2, the fixed contract, repeated the lifecycle on its market 3 (HBAR / USD Above, 10 minutes, created 2026-10-03 17:10 UTC): split, pool and the four trades, after which the schedule settled the market on its own.
 
 | Step | HashScan |
 | --- | --- |
@@ -46,7 +48,7 @@ Deployment v2 (the fixed contract) repeated the lifecycle on its market 3 (HBAR 
 | HCS messages on the v2 topic | [topic 0.0.10844607](https://hashscan.io/testnet/topic/0.0.10844607), `market_created` and `market_settled` for markets 3, 4 and 5 |
 | Scheduled executions for the other two 30-minute markets, both at the first instant of their expiry second | market 4 (Scalar, payout 0.50006916): [transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791047922-812032992); market 5 (Above, payout 0): [transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791048543-013715156) |
 
-Manual resolution and a scalar redemption, on deployment v1 after its schedules deferred (see `docs/SECURITY.md`, "Scheduled run timing"):
+Deployment v1 also shows the manual fallback. After its schedules deferred (see "Scheduled run timing" in [SECURITY.md](SECURITY.md#scheduled-run-timing)), its 30-minute markets were resolved by hand, which also produced a scalar redemption:
 
 | Step | HashScan |
 | --- | --- |
@@ -57,7 +59,7 @@ Manual resolution and a scalar redemption, on deployment v1 after its schedules 
 
 ## Reference markets
 
-The reference deployment holds markets of every kind and in every state, so a fresh scaffold shows live data and judges can watch markets settle during judging.
+The reference deployment holds markets of every kind and in every state, so a fresh scaffold shows live data and judges can watch markets settle during judging. The daily series market planned as a stretch goal was not built.
 
 | Market | Kind | Expiry | Purpose | Market id |
 | --- | --- | --- | --- | --- |
@@ -67,17 +69,10 @@ The reference deployment holds markets of every kind and in every state, so a fr
 | BTC/USD, strike 5 percent above spot | Below | 2026-10-09 16:00 UTC | Settles itself in the middle of judging | v2 market 0, [creation](https://hashscan.io/testnet/transaction/0x8945ad9b8d59bf445075013f229a73bb29ce2878df79723b3b3357b122f42eb1) |
 | ETH/USD, range 10 percent around spot | Between | 2026-10-14 16:00 UTC | Settles itself late in judging | v2 market 1, [creation](https://hashscan.io/testnet/transaction/0xcac514cc68448a6d301d1606025619778a20c3cdc873c6bae7d018b71fc2ea15) |
 | HBAR/USD, range 20 percent around spot | Scalar | 2026-10-30 16:00 UTC | Stays open through the announcement | v2 market 2, [creation](https://hashscan.io/testnet/transaction/0x738e8e5725f674c89a1de53ff1f4e8248f4d092dba8a89934bb7c02c46411185) |
-| HBAR/USD daily series (stretch) | Above, struck at the last settlement | Rolls every 24 hours | A new market appears each day of judging | cut, see docs/DECISIONS.md |
-
-## Series rolls (stretch)
-
-Three consecutive unattended rolls, if the series ships.
-
-| Roll | Close | Open | Seed |
-| --- | --- | --- | --- |
-| 1 to 3 | cut: the series was not built, see `docs/DECISIONS.md` | | |
 
 ## Verified contracts
+
+Written by `verify-all`. The first three rows are deployment v1 and the last three are deployment v2. `ChainlinkResolver` appears in both because it is shared.
 
 | Contract | Address | HashScan | Sourcify match |
 | --- | --- | --- | --- |
@@ -89,6 +84,8 @@ Three consecutive unattended rolls, if the series ships.
 | `VerdictRouter` | 0xE7fa06DD77F0F514c6313F57b02427734d3B84DB | [contract](https://hashscan.io/testnet/contract/0xE7fa06DD77F0F514c6313F57b02427734d3B84DB) | exact_match |
 
 ## Testnet run log
+
+Written by `e2e-testnet` and `reference-deployment`, in the order they ran. Up to the second "Deploy Verdict" row, the rows belong to deployment v1: the first end-to-end run on market 1, then reference markets 2 to 7. From that row on they belong to deployment v2: reference markets 0 to 2, the second end-to-end run on market 3, then markets 4 and 5. Rows that say "no transaction" record an entity or a balance check rather than a transaction.
 
 | Step | HashScan | Transaction id | Date |
 | --- | --- | --- | --- |
@@ -221,6 +218,8 @@ Three consecutive unattended rolls, if the series ships.
 | Market 5 pool creation and seed | [link](https://hashscan.io/testnet/transaction/0x3f8e00ba7a0a8fc8baab8ce50679af41a3c949899aadcc668f9368b8fc100c0f) | 0.0.7314364@1791048563.989937727 | 2026-10-03 |
 
 ## Reference markets created
+
+Written by `reference-deployment`. The first six rows are deployment v1 (market ids 2 to 7) and the last four are deployment v2 (market ids 0, 1, 2 and 5). The table under "Reference markets" above is the current set.
 
 | Market | Kind | Expiry | Market id | Pool | Purpose |
 | --- | --- | --- | --- | --- | --- |
