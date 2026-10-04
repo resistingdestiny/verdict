@@ -67,7 +67,8 @@ contract Verdict is IVerdict, Ownable, ReentrancyGuard {
     event TokenCreateValueSet(uint256 value);
 
     /// @param initialOwner The account that may allow resolvers, sweep surplus and tune `tokenCreateValue`.
-    /// @param tokenCreateValue_ Tinybars sent with each HTS token creation, 1 HBAR is a sound start.
+    /// @param tokenCreateValue_ Tinybars sent with each HTS token creation; the deploy script uses 20 HBAR because
+    ///        the fee measured on testnet is about 11.7 HBAR per token and it is pegged to USD.
     constructor(address initialOwner, uint256 tokenCreateValue_) Ownable(initialOwner) {
         tokenCreateValue = tokenCreateValue_;
         emit TokenCreateValueSet(tokenCreateValue_);

@@ -1,5 +1,5 @@
 {
-  "filter_paths": "node_modules|mocks|spikes",
+  "filter_paths": "node_modules|mocks",
   "exclude_informational": false,
   "exclude_low": false,
   "fail_on": "medium"
