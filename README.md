@@ -16,7 +16,7 @@ What you get:
 npm create scaffold-hbar@latest -- --template resistingdestiny/verdict
 ```
 
-![The Verdict market list on a fresh scaffold, before any deployment](docs/img/screenshots/home-light-1280.png)
+![The Verdict market list, live on Hedera testnet, as a fresh scaffold shows it](docs/img/home.png)
 
 ## Evidence at a glance
 
