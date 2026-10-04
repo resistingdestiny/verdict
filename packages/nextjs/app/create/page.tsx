@@ -37,7 +37,8 @@ import {
   unixToLocalInput,
 } from "~~/lib/format";
 import { GAS } from "~~/lib/gas";
-import { KINDS, KIND_DESCRIPTIONS, KIND_LABELS, Kind, boundsValid, kindUsesUpper, questionText } from "~~/lib/payoff";
+import { KINDS, KIND_DESCRIPTIONS, KIND_NAMES, Kind, boundsValid, kindUsesUpper } from "~~/lib/kinds";
+import { questionText } from "~~/lib/payoff";
 import { nowSeconds } from "~~/lib/verdict";
 import { getParsedError } from "~~/utils/scaffold-hbar";
 
@@ -298,7 +299,7 @@ const CreateFlow = () => {
                       onClick={() => setKind(option)}
                       title={KIND_DESCRIPTIONS[option]}
                     >
-                      {KIND_LABELS[option]}
+                      {KIND_NAMES[option]}
                     </button>
                   ))}
                 </div>

@@ -1,15 +1,18 @@
-import { PAYOUT_SCALE } from "../format";
 import {
+  KINDS,
+  KIND_NAMES,
   Kind,
+  PAYOUT_SCALE,
   boundsValid,
-  conditionText,
+  isKind,
+  kindFromName,
+  kindName,
   kindUsesUpper,
   noPayoutFor,
-  payoffPoints,
   payoutFor,
-  priceDomain,
-  questionText,
-} from "../payoff";
+} from "../kinds";
+import { conditionText, payoffPoints, priceDomain, questionText } from "../payoff";
+import { questionText as serverQuestionText } from "../question";
 import { describe, expect, it } from "vitest";
 
 const FULL = PAYOUT_SCALE;
@@ -62,7 +65,7 @@ describe("payoutFor", () => {
   });
 
   it("NO always pays the complement", () => {
-    for (const kind of [Kind.Above, Kind.Below, Kind.Between, Kind.Scalar]) {
+    for (const kind of KINDS) {
       for (const answer of [LOWER - 1n, LOWER, LOWER + 1n, UPPER - 1n, UPPER, UPPER + 1n]) {
         expect(payoutFor(kind, LOWER, UPPER, answer) + noPayoutFor(kind, LOWER, UPPER, answer)).toBe(FULL);
       }
@@ -106,6 +109,30 @@ describe("question text", () => {
   it("describes the condition alone", () => {
     expect(conditionText(Kind.Above, LOWER, 0n, 8)).toBe("be above 0.1");
     expect(conditionText(Kind.Scalar, LOWER, UPPER, 8)).toBe("settle between 0.1 and 0.12");
+  });
+
+  it("uses the same wording on the server, with ISO 8601 times and a fallback feed name", () => {
+    expect(
+      serverQuestionText({ feed: "HBAR / USD", kind: Kind.Above, lower: LOWER, upper: 0n, decimals: 8, expiry }),
+    ).toBe("Will HBAR / USD be above 0.1 at 2026-10-09T16:00:00Z?");
+    expect(serverQuestionText({ feed: null, kind: Kind.Scalar, lower: LOWER, upper: UPPER, decimals: 8, expiry })).toBe(
+      "Where between 0.1 and 0.12 will the feed be at 2026-10-09T16:00:00Z?",
+    );
+  });
+});
+
+describe("kind names", () => {
+  it("lists every kind once, in enum order, with a name", () => {
+    expect(KINDS).toEqual([0, 1, 2, 3]);
+    expect(KINDS.map(kind => KIND_NAMES[kind])).toEqual(["Above", "Below", "Between", "Scalar"]);
+  });
+
+  it("maps names to kinds and back, and labels unknown values", () => {
+    for (const kind of KINDS) expect(kindFromName(kindName(kind))).toBe(kind);
+    expect(kindFromName("Outside")).toBeUndefined();
+    expect(kindName(KINDS.length)).toBe(`Unknown(${KINDS.length})`);
+    expect(isKind(Kind.Scalar)).toBe(true);
+    expect(isKind(KINDS.length)).toBe(false);
   });
 });
 

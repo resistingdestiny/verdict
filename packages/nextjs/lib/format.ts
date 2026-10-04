@@ -6,13 +6,15 @@
  * weibars (18 decimals): 1 tinybar = 1e10 weibars. Outcome tokens have 8 decimals, so one unit of YES plus
  * one unit of NO is backed by exactly one tinybar.
  */
+import { PAYOUT_SCALE } from "./kinds";
+
+/** Re-exported from `./kinds` so unit helpers and the payoff rule share one scale. */
+export { PAYOUT_SCALE };
 
 export const HBAR_DECIMALS = 8;
 export const TOKEN_DECIMALS = 8;
 export const TINYBARS_PER_HBAR = 100_000_000n;
 export const WEIBARS_PER_TINYBAR = 10_000_000_000n;
-/** The YES payout scale: tinybars paid per whole YES token when the payout is 1 HBAR. */
-export const PAYOUT_SCALE = 100_000_000n;
 
 const pow10 = (n: number): bigint => 10n ** BigInt(n);
 

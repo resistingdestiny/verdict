@@ -1,4 +1,5 @@
 import { getDeployedContract } from "~~/app/api/_lib/verdict";
+import { KINDS, KIND_DESCRIPTIONS, KIND_NAMES } from "~~/lib/kinds";
 import verdictConfig from "~~/verdict.config";
 
 export const dynamic = "force-dynamic";
@@ -23,11 +24,8 @@ export async function GET() {
     "",
     "## Market kinds",
     "",
-    "- Above: YES pays 1 HBAR when the price is above the strike at expiry.",
-    "- Below: YES pays 1 HBAR when the price is below the strike at expiry.",
-    "- Between: YES pays 1 HBAR when the price is at or above the lower bound and below the upper bound.",
-    "- Scalar: YES pays a share of 1 HBAR rising linearly from the floor to the cap.",
-    "In every kind NO pays 1 HBAR minus what YES pays.",
+    ...KINDS.map(kind => `- ${KIND_NAMES[kind]}: ${KIND_DESCRIPTIONS[kind]}`),
+    "Every kind reads the price at expiry. In every kind NO pays 1 HBAR minus what YES pays.",
     "",
     "## Contracts on Hedera testnet (chain 296)",
     "",

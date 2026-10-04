@@ -10,7 +10,7 @@ What you get:
 - **One transaction per trade.** A router buys and sells both YES and NO against a SaucerSwap V1 pool in one transaction each, and it sits outside the contract that holds the money.
 - **A public audit trail.** Every market's terms and result go to a Hedera Consensus Service (HCS) topic, built from on-ledger events. A JSON API and `/llms.txt` let agents read markets and trade.
 - **A working app on first run.** The market list, market pages with odds history, a guided Create page, a portfolio and the record page show live Hedera testnet markets before you deploy anything.
-- **Tests and evidence.** 112 contract tests against local stand-ins for HTS and HSS, property tests for the collateral rules, CI, and measured gas and HBAR for every step on testnet.
+- **Tests and evidence.** 115 contract tests against local stand-ins for HTS and HSS, property tests for the collateral rules, CI, and measured gas and HBAR for every step on testnet.
 
 ```bash
 npm create scaffold-hbar@latest -- --template resistingdestiny/verdict
@@ -134,7 +134,7 @@ The scripts and tests also read a few optional settings. Put them in front of th
 ### 3. Test and deploy
 
 ```bash
-yarn hardhat:test            # 112 tests on local mocks, about 30 seconds
+yarn hardhat:test            # 115 tests on local mocks, about 30 seconds
 yarn hardhat:deploy:testnet  # about 40 seconds and 5 HBAR
 ```
 
@@ -384,7 +384,7 @@ Local tests run against mocks of HTS and HSS that `packages/hardhat/test/helpers
 
 ## Extending
 
-- **New market kind.** The mechanism is shared, so a kind needs an enum value, a bounds-check term and a payoff branch in the contract, plus a line in each place the kind list is copied: the test helper's enum mirror, the frontend lib, the question text, the JSON API and HCS message builders, the scripts, this README and a payoff SVG. `rg -n "Kind.Scalar|kind === 3|Scalar" packages` finds them all. The ordered checklist is in [AGENTS.md](AGENTS.md), and [docs/TUTORIAL.md](docs/TUTORIAL.md) walks through adding an Outside kind. The committed reference deployment does not know a new kind, so redeploy afterwards.
+- **New market kind.** The mechanism is shared, so a kind needs an enum value, a bounds-check term and a payoff branch in the contract, plus its entry in `packages/nextjs/lib/kinds.ts`, the one TypeScript definition of the kinds that the app, the JSON API, the HCS builders, the scripts and the test helpers import. Then the tests, this README and a payoff SVG. The ordered checklist is in [AGENTS.md](AGENTS.md), and [docs/TUTORIAL.md](docs/TUTORIAL.md) walks through adding an Outside kind. The committed reference deployment does not know a new kind, so redeploy afterwards.
 - **Other oracles.** Implement `IResolver` (`readingAt`, `describe`, `feedDecimals`), deploy it, and have the owner allow it with `setResolver`. `resolvers/ChainlinkResolver.sol` is the reference. A guarded resolver that cross-checks a second oracle is sketched in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#designed-but-not-built).
 - **Other collateral.** Out of scope for this template. Split, merge and redeem assume HBAR in tinybars, so changing the collateral means reworking the collateral accounting in `Verdict.sol`.
 - **Other venues.** SaucerSwap V2 pools, which concentrate liquidity in a price range, suit outcome tokens because an outcome token's price always lies between 0 and 1 HBAR. Thanks to the core and router boundary, a new venue touches only `VerdictRouter.sol`; collateral code never changes. Limit orders, protocol fees and governance are further extensions in the same layer.

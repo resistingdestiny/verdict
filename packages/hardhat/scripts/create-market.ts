@@ -1,6 +1,7 @@
 import { ethers, deployments } from "hardhat";
 import { TESTNET_ADDRESSES, feedIdFor } from "../config/addresses";
 import { parseArgs, requireArgs, hashscanTx, hashscanToken, WEIBARS_PER_TINYBAR } from "./lib/routerCli";
+import { KIND_NAMES, kindFromName, kindUsesUpper } from "../../nextjs/lib/kinds";
 
 /**
  * Creates a Verdict market on Hedera testnet.
@@ -12,8 +13,6 @@ import { parseArgs, requireArgs, hashscanTx, hashscanToken, WEIBARS_PER_TINYBAR 
  * tokens and the resolution schedule, with HashScan links.
  */
 
-const KINDS: Record<string, number> = { Above: 0, Below: 1, Between: 2, Scalar: 3 };
-
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   requireArgs(args, ["feed", "kind", "lower", "expiry"]);
@@ -21,9 +20,9 @@ async function main() {
   const feed = TESTNET_ADDRESSES.chainlink[args.feed];
   if (!feed)
     throw new Error(`Unknown feed "${args.feed}". Known: ${Object.keys(TESTNET_ADDRESSES.chainlink).join(", ")}`);
-  const kind = KINDS[args.kind];
-  if (kind === undefined) throw new Error(`Unknown kind "${args.kind}". Known: ${Object.keys(KINDS).join(", ")}`);
-  const needsUpper = kind === 2 || kind === 3;
+  const kind = kindFromName(args.kind);
+  if (kind === undefined) throw new Error(`Unknown kind "${args.kind}". Known: ${KIND_NAMES.join(", ")}`);
+  const needsUpper = kindUsesUpper(kind);
   if (needsUpper) requireArgs(args, ["upper"]);
 
   const lower = ethers.parseUnits(args.lower, feed.decimals);

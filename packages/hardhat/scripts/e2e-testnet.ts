@@ -4,10 +4,10 @@ import { spawnSync } from "child_process";
 import { ethers } from "hardhat";
 import { TESTNET_ADDRESSES } from "../config/addresses";
 import { Ledger, formatHbar } from "./lib/evidence";
+import { Kind } from "../../nextjs/lib/kinds";
 import { hashscanContract, hashscanTopic, hashscanTransaction, scheduleExecution, topicMessages } from "./lib/hashscan";
 import {
   GAS,
-  KIND,
   TestnetContext,
   approve,
   balanceTinybars,
@@ -316,7 +316,7 @@ async function main() {
 
   const market = await createMarket(ctx, ledger, `${K}:market`, {
     feedName: "HBAR/USD",
-    kind: KIND.Above,
+    kind: Kind.Above,
     lower: scaled(spot.answer, 95),
     upper: 0n,
     expiry: Math.floor(Date.now() / 1000) + MARKET_MINUTES * 60 + EXPIRY_MARGIN_SECONDS,

@@ -142,11 +142,7 @@ The testnet run is run by hand and never in CI. `yarn hardhat:e2e-testnet` creat
 
 ## How to add a market kind
 
-The mechanism is shared, so `createMarket`, split, merge, the router, scheduling and redemption need no new logic. What a new kind does need is a line in every place the kind list is copied, and there are more of those than the contract: the Solidity enum, a TypeScript mirror in the test helpers, the frontend lib, the question text, the JSON API, the HCS message builders, the operational scripts and the docs. The list is copied because the hardhat package cannot import the frontend lib. This command finds every copy:
-
-```bash
-rg -n "Kind.Scalar|kind === 3|Scalar" packages
-```
+The mechanism is shared, so `createMarket`, split, merge, the router, scheduling and redemption need no new logic. A new kind needs an enum value, a bounds-check term and a payoff branch in the contract, and one TypeScript module, `packages/nextjs/lib/kinds.ts`. That module is the only TypeScript definition of the kinds: the app, the JSON API, the HCS message builders, `/llms.txt`, the operational scripts and the contract test helpers all import it. It has no imports of its own, so the hardhat package loads it by relative path (`../../nextjs/lib/kinds`).
 
 The ordered checklist follows. `docs/TUTORIAL.md` walks through it in full by adding an Outside kind.
 
@@ -155,35 +151,22 @@ Contract
 1. `packages/hardhat/contracts/interfaces/IVerdict.sol`: append the enum value. Append only: stored markets record their kind as a number, so inserting or reordering would change existing markets. The interface is frozen except for this. Update the `lower` and `upper` struct comments and the `@param upper` NatSpec on `createMarket`.
 2. `packages/hardhat/contracts/Verdict.sol`: add the kind to the bounds check in `createMarket` if it has an upper bound (`if (kind == Kind.Between || kind == Kind.Scalar)`; otherwise the contract stores `upper = 0`). Then add the payoff branch in `_payout` before the Scalar lines. Scalar is the fall-through at the end of the function, not an early return, so a branch placed after it is unreachable.
 
+TypeScript
+
+3. `packages/nextjs/lib/kinds.ts`: the `Kind` value (the same number as the Solidity enum), `KINDS`, `KIND_NAMES`, `KIND_DESCRIPTIONS`, `kindUsesUpper` if the kind has an upper bound, the `payoutFor` switch (the contract's rule) and the `conditionText` switch. Both switches have no default, so both type checks fail until each has a case. `questionText` reads "Will {feed} {condition} at {time}?" for every kind but Scalar; add a branch only for a different sentence shape. Everything else follows from this file: the Create page menu, the kind badge, the diagram's upper-bound marker, `upper` and `question` in `/api/markets`, the `market_created` HCS message, `/llms.txt`, `KIND=` in `create-market.ts`, `record-sync.ts` and `Kind` in the contract tests.
+
 Tests
 
-3. `packages/hardhat/test/helpers/verdict.ts`: the `Kind` enum mirror. The suite does not compile without it.
 4. `packages/hardhat/test/Verdict.test.ts`: the bounds test (`InvalidBounds` for `upper <= lower`, and a valid creation that reads `upper` back), a payoff table through `payoutFor` covering each bound, a value on either side of it and a midpoint, and the lifecycle tests where they enumerate kinds.
 5. `packages/hardhat/test/Invariants.property.test.ts`: the random kind range, `fc.nat({ max: 3 })` at about line 44. It shows as pending under `yarn hardhat:test` and runs under `yarn hardhat:test:property`.
-
-Frontend
-
-6. `packages/nextjs/lib/payoff.ts`: `Kind`, `KINDS`, `KIND_LABELS`, `KIND_DESCRIPTIONS`, `kindUsesUpper`, the `payoutFor` switch and the `conditionText` switch.
-7. `packages/nextjs/lib/question.ts`: `KIND_NAMES` and the `questionText` switch, or the kind gets the Scalar wording in the API and on HCS.
-8. `packages/nextjs/components/PayoffDiagram.tsx`: the upper-bound marker. Use `kindUsesUpper(kind)`, not a literal kind test.
-9. `packages/nextjs/lib/__tests__/payoff.test.ts`: rows in every block that enumerates kinds.
-
-API and record
-
-10. `packages/nextjs/app/api/_lib/markets.ts`: the `usesUpper` test (use `isKind` and `kindUsesUpper` from `~~/lib/payoff`).
-11. `packages/nextjs/app/api/_lib/messages.ts`: `KIND_NAMES` and `usesUpper`.
-12. `packages/nextjs/app/llms.txt/route.ts`: one line for the kind.
-
-Scripts
-
-13. `packages/hardhat/scripts/lib/testnetMarket.ts`: `KIND` and `KIND_NAMES`; add a `kindUsesUpper` helper there.
-14. `packages/hardhat/scripts/create-market.ts`: its `KINDS` map and `needsUpper` (import both from `./lib/testnetMarket`).
-15. `packages/hardhat/scripts/record-sync.ts`: `KIND_NAMES` and `usesUpper`.
+6. `packages/nextjs/lib/__tests__/payoff.test.ts`: rows in every block that enumerates kinds, including "kind names", which pins the enum order.
 
 Docs and deployment
 
-16. `README.md`, heading "The four market kinds": rename it, add the paragraph and a payoff SVG under `docs/img/` (one per kind).
-17. The committed reference deployment in `packages/nextjs/contracts/deployedContracts.ts` does not know a new kind. Redeploy with `yarn hardhat:deploy:testnet` and commit the regenerated file, or the Create page offers a kind the live contract rejects.
+7. `README.md`, heading "The four market kinds": rename it, add the paragraph and a payoff SVG under `docs/img/` (one per kind).
+8. The committed reference deployment in `packages/nextjs/contracts/deployedContracts.ts` does not know a new kind. Redeploy with `yarn hardhat:deploy:testnet` and commit the regenerated file, or the Create page offers a kind the live contract rejects.
+
+To confirm nothing was missed, `rg -n "Kind.Scalar|Scalar" packages` should list only the contract, `lib/kinds.ts`, the tests and the reference-deployment plan in `scripts/reference-deployment.ts`.
 
 ## Trading Verdict from an agent
 

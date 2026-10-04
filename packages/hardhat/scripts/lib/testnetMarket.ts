@@ -11,6 +11,7 @@ import { TESTNET_ADDRESSES, feedIdFor } from "../../config/addresses";
 import { WEIBARS_PER_TINYBAR } from "./routerCli";
 import { Ledger, StepRecord, TINYBARS_PER_HBAR } from "./evidence";
 import { hashscanContract, hashscanSchedule, hashscanToken, longZeroToEntityId } from "./hashscan";
+import { kindName } from "../../../nextjs/lib/kinds";
 
 /**
  * The market operations the hand-run testnet scripts share: loading the deployed contracts, reading
@@ -29,8 +30,6 @@ export const GAS = {
   call: 3_000_000n,
 } as const;
 
-export const KIND = { Above: 0, Below: 1, Between: 2, Scalar: 3 } as const;
-export const KIND_NAMES = ["Above", "Below", "Between", "Scalar"] as const;
 export const STATUS_NAMES = ["Open", "Settled", "Void"] as const;
 
 /** Hardhat's well-known first account, which the config falls back to when no deployer key is set. */
@@ -165,7 +164,7 @@ export async function createMarket(
   const record = await ledger.step(`${key}:create`, `Create market: ${params.label}`, async () => {
     const cost = await ctx.verdict.creationCost();
     console.log(
-      `  ${params.feedName} ${KIND_NAMES[params.kind]} lower=${ethers.formatUnits(params.lower, feed.decimals)} ` +
+      `  ${params.feedName} ${kindName(params.kind)} lower=${ethers.formatUnits(params.lower, feed.decimals)} ` +
         `upper=${params.upper === 0n ? "-" : ethers.formatUnits(params.upper, feed.decimals)} ` +
         `expiry=${new Date(params.expiry * 1000).toISOString()} cost=${cost} tinybars`,
     );
@@ -191,7 +190,7 @@ export async function createMarket(
         lower: params.lower.toString(),
         upper: params.upper.toString(),
         expiry: String(params.expiry),
-        kind: KIND_NAMES[params.kind],
+        kind: kindName(params.kind),
         feed: params.feedName,
       },
     };

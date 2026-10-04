@@ -3,6 +3,7 @@ import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { now, ONE_HBAR, setBalance, setNextTime, setTime } from "./helpers/hedera";
+import { kindName } from "../../nextjs/lib/kinds";
 import {
   approveBoth,
   createMarket,
@@ -334,7 +335,7 @@ describe("Verdict", function () {
       },
     ];
     for (const table of tables) {
-      it(`${Kind[table.kind]} pays by the design's rule at each bound, just either side, and the midpoint`, async function () {
+      it(`${kindName(table.kind)} pays by the design's rule at each bound, just either side, and the midpoint`, async function () {
         const { verdict } = await loadFixture(deployVerdict);
         for (const [answer, expected] of table.rows) {
           expect(await verdict.payoutFor(table.kind, table.lower, table.upper, answer), `answer ${answer}`).to.equal(
@@ -359,7 +360,7 @@ describe("Verdict", function () {
       { kind: Kind.Scalar, lower: 1000n, upper: 2000n, answer: 1250n, payout: 25_000_000n },
     ];
     for (const c of cases) {
-      it(`${Kind[c.kind]}: create, split, merge, scheduled resolve, redeem, with collateral and supply checked at each step`, async function () {
+      it(`${kindName(c.kind)}: create, split, merge, scheduled resolve, redeem, with collateral and supply checked at each step`, async function () {
         const ctx = await loadFixture(deployVerdict);
         const { verdict, hss, feed, alice, bob } = ctx;
         const { id, expiry, yes, no } = await createMarket(ctx, { kind: c.kind, lower: c.lower, upper: c.upper });
