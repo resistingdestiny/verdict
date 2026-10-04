@@ -1,42 +1,60 @@
 # Costs
 
-Measured HBAR and gas for every step of the market lifecycle on Hedera testnet. The e2e run (`packages/hardhat/scripts/e2e-testnet.ts`) appends the measured values; until it runs, every value below reads "measured during the testnet run". A rough planning estimate before measurement: about 60 HBAR per market in fees before liquidity, mostly the two HTS token creations and the SaucerSwap pool creation fee.
+What each step of the market lifecycle costs on Hedera testnet, in gas and in HBAR. Every number here was measured on 2026-10-03 by the testnet scripts (`packages/hardhat/scripts/e2e-testnet.ts` and `reference-deployment.ts`), which append one row per transaction to the table at the end of this file.
+
+How to read the numbers:
+
+- **Gas used** is the gas the transaction consumed. Hedera charges gas in HBAR and bills at least 80 percent of the gas limit the sender set, so the fee depends on the limit as well as on the gas used.
+- **HBAR charged** is the network fee: the `charged_tx_fee` summed over every mirror node record of the transaction, the parent and its children. A child record is a step the network ran inside the transaction, such as an HTS token creation inside `createMarket`. The "records" count says how many there were.
+- HBAR moved as value is not a fee and is not in these numbers: collateral sent to `split`, liquidity sent to the pool, and refunds.
+
+Before measurement, the planning estimate was about 60 HBAR per market in fees before liquidity, mostly the two HTS token creations and the SaucerSwap pool creation fee.
 
 ## Per step
 
-| Step | HBAR fee | Gas | Notes |
+Ranges cover every measured run of the step, on both deployments.
+
+| Step | Gas used | HBAR charged | Notes |
 | --- | --- | --- | --- |
-| Deploy `Verdict.sol` | measured during the testnet run | measured during the testnet run | |
-| Deploy `ChainlinkResolver.sol` | measured during the testnet run | measured during the testnet run | |
-| Deploy `VerdictRouter.sol` | measured during the testnet run | measured during the testnet run | |
-| Create the HCS topic | measured during the testnet run | n/a | HAPI transaction, not a contract call |
-| `createMarket` | measured during the testnet run | measured during the testnet run | Includes both HTS token creations and the resolution reserve |
-| HTS token creation, per token | measured during the testnet run | measured during the testnet run | Charged inside `createMarket` |
-| `split` | measured during the testnet run | measured during the testnet run | |
-| SaucerSwap pool creation | measured during the testnet run | measured during the testnet run | Includes `pairCreateFee` (2 USD in tinycents; about 20 HBAR on 2026-10-02) |
-| Seed liquidity | measured during the testnet run | measured during the testnet run | |
-| `buyYes` | measured during the testnet run | measured during the testnet run | |
-| `sellYes` | measured during the testnet run | measured during the testnet run | |
-| `buyNo` | measured during the testnet run | measured during the testnet run | Split plus swap in one transaction |
-| `sellNo` | measured during the testnet run | measured during the testnet run | Swap plus merge in one transaction |
-| Scheduled `resolveScheduled` | measured during the testnet run | measured during the testnet run | Paid from the market's resolution reserve, never from collateral |
-| Manual `resolve` | measured during the testnet run | measured during the testnet run | Fallback when the schedule did not fire |
-| `voidMarket` | measured during the testnet run | measured during the testnet run | Only when the resolver has no fresh reading |
-| `redeem`, binary market | measured during the testnet run | measured during the testnet run | |
-| `redeem`, scalar market | measured during the testnet run | measured during the testnet run | |
-| HCS record submission, per message | measured during the testnet run | n/a | HAPI transaction, under 1 KB per message |
-| Series roll (stretch), per roll | measured during the testnet run | measured during the testnet run | Close, open and seed steps combined |
+| Deploy `Verdict.sol` | 2,923,987 | 2.42690921 | Deployment v2 |
+| Deploy `ChainlinkResolver.sol` | 831,071 | 0.68978893 | Deployed once, shared by v1 and v2 |
+| Deploy `VerdictRouter.sol` | 1,991,985 | 1.65334755 | Deployment v2 |
+| Create the HCS topic | n/a | not measured | A native Hedera transaction, not a contract call; the scripts do not record it |
+| `createMarket` | 1,954,952 to 1,988,476 | 24.91862608 to 25.09699557 | Includes both HTS token creations (4 to 6 records). The 5 HBAR resolution reserve is held on top of this and released at settlement |
+| HTS token creation, per token | n/a | about 11.7 | Charged inside `createMarket`; measured in spike 1 (see [DECISIONS.md](DECISIONS.md)) |
+| `split` | 1,541,644 to 1,558,744 | 1.27956452 to 1.29375752 | |
+| Approve a spender on YES or NO | 726,968 to 727,196 | 0.60338344 to 0.60357268 | Needed before seeding (the SaucerSwap router), `sellYes` and `sellNo` (`VerdictRouter`), and `merge` or `redeem` (`Verdict`) |
+| SaucerSwap pool creation and seed | 6,787,758 to 6,787,976 | 17.28184710 to 17.31949493 | One transaction. SaucerSwap's `pairCreateFee` is 2 USD in tinycents (hundred-millionths of a cent), about 20 HBAR on 2026-10-02 |
+| `buyYes` | 255,657 | 0.21219531 | |
+| `sellYes` | 2,369,335 | 1.96654805 | |
+| `buyNo` | 3,145,704 | 2.61093432 | Split plus swap in one transaction |
+| `sellNo` | 3,159,769 | 2.62260827 | Swap plus merge in one transaction |
+| Scheduled `resolveScheduled` | not reported | 0.17830973 to 0.17836949 | Paid by Verdict from the market's resolution reserve, never from collateral |
+| Manual `resolve` | not measured | not measured | Fallback when the schedule did not fire; used on deployment v1 (see [EVIDENCE.md](EVIDENCE.md)) |
+| `voidMarket` | not measured | not measured | Only when the resolver has no fresh reading; no market has voided on testnet |
+| `redeem`, binary market | 122,946 | 0.10204518 | |
+| `redeem`, scalar market | not measured | not measured | Done on deployment v1 (see [EVIDENCE.md](EVIDENCE.md)) but not recorded here |
+| HCS record message | n/a | not measured | A native Hedera transaction, under 1 KB per message |
 
 ## Totals
 
-| Total | HBAR |
+The HBAR ledger at the end of [DECISIONS.md](DECISIONS.md) records how much each testnet run took from the deployer's balance. These are balance changes, so they include HBAR locked as collateral and pool liquidity as well as fees:
+
+| Run | HBAR |
 | --- | --- |
-| One market, create through settlement, before liquidity | measured during the testnet run |
-| One market including a seeded pool | measured during the testnet run |
-| Full reference deployment | measured during the testnet run |
-| Deployer spent to date | See the HBAR ledger in [DECISIONS.md](DECISIONS.md) |
+| First end-to-end run (deployment v1, market 1) | 100.07289819 |
+| Second end-to-end run (deployment v2, market 3) | 96.89542241 |
+| Reference deployment runs | 523.16249304, 216.62316145 and 65.32061298 |
+| Deployer spent to date | 1002.07458807 |
 
 ## Measured on the testnet run
+
+The rows are in the order the scripts ran them:
+
+- Up to the second "Deploy Verdict" row, the rows belong to deployment v1: the first end-to-end run on market 1, then the reference markets 2 to 7.
+- From the second "Deploy Verdict" row on, they belong to deployment v2: the reference markets 0 to 2, the second end-to-end run on market 3, and the 30-minute markets 4 and 5. `ChainlinkResolver` was deployed once, which is why its row in the v2 block carries the v1 timestamp.
+- "pending" means the mirror node had not indexed the transaction when the row was written. The first three deploy rows carry a hash only.
+- Transaction ids have the form `payer@seconds.nanos`: the account that paid, then the transaction's valid-start time.
 
 | Step | Gas used | HBAR charged | Transaction id |
 | --- | --- | --- | --- |
