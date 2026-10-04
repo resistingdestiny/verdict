@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import type { AddressLike } from "ethers";
 import { expect } from "chai";
 import type { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import type {
@@ -87,6 +88,8 @@ export type MarketTerms = {
   /** Tinybars sent with the creation; defaults to the exact creation cost. */
   value?: bigint;
   creator?: HardhatEthersSigner;
+  /** The resolver the market settles through; defaults to the context's ChainlinkResolver. */
+  resolver?: AddressLike;
 };
 
 /** Creates a market and returns its id and expiry. */
@@ -99,7 +102,7 @@ export async function createMarket(
   const id = await ctx.verdict.marketCount();
   await ctx.verdict
     .connect(creator)
-    .createMarket(ctx.resolver, ctx.feedId, terms.kind, terms.lower, terms.upper ?? 0n, expiry, {
+    .createMarket(terms.resolver ?? ctx.resolver, ctx.feedId, terms.kind, terms.lower, terms.upper ?? 0n, expiry, {
       value: terms.value ?? ctx.creationCost,
     });
   const market = await ctx.verdict.getMarket(id);
