@@ -30,6 +30,7 @@ Everything in this table is live on Hedera testnet, and each HashScan link (Hash
 | A market resolved by the Hedera Schedule Service with no account sending the transaction | [scheduled transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791047131-574357351), [schedule entity](https://hashscan.io/testnet/schedule/0.0.10844890) |
 | A scalar market settled by its schedule at a fractional payout (0.50006916 HBAR per YES) | [scheduled transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791047922-812032992) |
 | Pool creation on SaucerSwap V1 and a `buyNo` trade (split plus swap in one transaction) | [pool](https://hashscan.io/testnet/transaction/0xb1cd9fe3b016186056e871a219afe96b3bb8cbe2c24528333d676a000e189c74), [buyNo](https://hashscan.io/testnet/transaction/0x928a01c7ab8d5f9d93e03e56c99cf5cf06a23db8fcad99f3a7f9a68a1b288f3f) |
+| A market settled through `GuardedResolver`, which accepts Chainlink only when Supra agrees | [scheduled transaction](https://hashscan.io/testnet/transaction/0.0.7314364-1791129273-042704926), [resolver](https://hashscan.io/testnet/contract/0xED030279D3fc9895aEA124f476fCADBbcB5a20eF) |
 | HCS record topic with `market_created` and `market_settled` messages | [topic 0.0.10844607](https://hashscan.io/testnet/topic/0.0.10844607) |
 | Markets open through judging: BTC / USD Below (9 Oct), ETH / USD Between (14 Oct), HBAR / USD Scalar (30 Oct) | shown live on the home page of a fresh scaffold |
 
