@@ -10,7 +10,7 @@ What you get:
 - **One transaction per trade.** A router buys and sells both YES and NO against a SaucerSwap V1 pool in one transaction each, and it sits outside the contract that holds the money.
 - **A public audit trail.** Every market's terms and result go to a Hedera Consensus Service (HCS) topic, built from on-ledger events. A JSON API and `/llms.txt` let agents read markets and trade.
 - **A working app on first run.** The market list, market pages with odds history, a guided Create page, a portfolio and the record page show live Hedera testnet markets before you deploy anything.
-- **Tests and evidence.** 112 contract tests against local stand-ins for HTS and HSS, property tests for the collateral rules, CI, and measured gas and HBAR for every step on testnet.
+- **Tests and evidence.** 133 contract tests against local stand-ins for HTS and HSS, property tests for the collateral rules, CI, and measured gas and HBAR for every step on testnet.
 
 ```bash
 npm create scaffold-hbar@latest -- --template resistingdestiny/verdict
@@ -124,6 +124,8 @@ The scripts and tests also read a few optional settings. Put them in front of th
 | `VERDICT_ADDRESS` | `record-sync` | the `Verdict` address in `deployedContracts.ts` | Contract whose markets are recorded |
 | `RECORD_RESEND` | `record-sync` | none | Comma-separated market ids whose `market_created` message is posted again |
 | `TOKEN_CREATE_VALUE` | the deploy | `2000000000` (20 HBAR) | Amount in tinybars the contract sends with each HTS token creation |
+| `GUARDED` | the deploy | unset | `1` also deploys `GuardedResolver` on Hedera testnet and allows it on Verdict (see [A second oracle](#a-second-oracle-guardedresolver)) |
+| `RESOLVER` | `create-market` | `chainlink` | `guarded` creates the market against the deployed `GuardedResolver` |
 | `E2E_MARKET_MINUTES`, `E2E_MIN_BALANCE_HBAR` | `e2e-testnet` | `10`, `150` | Minutes until the test market expires; the balance below which the run stops |
 | `REF_ONLY`, `REF_SPLIT_HBAR`, `REF_LIQUIDITY_HBAR`, `REF_MIN_BALANCE_HBAR` | `reference-deployment` | all markets, `20`, `10`, `150` | Which reference markets to create (comma-separated keys such as `btc-below,eth-between`), the HBAR split and pooled per market, and the balance floor |
 | `MARKETS`, `VERDICT` | `recover-markets` | none; the `Verdict` in `packages/hardhat/deployments/hederaTestnet` | Market ids to recover, and a contract address override |
@@ -134,11 +136,11 @@ The scripts and tests also read a few optional settings. Put them in front of th
 ### 3. Test and deploy
 
 ```bash
-yarn hardhat:test            # 112 tests on local mocks, about 30 seconds
+yarn hardhat:test            # 133 tests on local mocks, about 30 seconds
 yarn hardhat:deploy:testnet  # about 40 seconds and 5 HBAR
 ```
 
-The deploy script deploys `Verdict`, `ChainlinkResolver` and `VerdictRouter`. It then rewrites `packages/nextjs/contracts/deployedContracts.ts` for chain 296 (Hedera testnet), so the app shows your deployment and your markets instead of the reference ones. If the operator variables are set, it also creates the HCS record topic and writes the topic id into `packages/nextjs/verdict.config.ts`. Without them it skips that step, and you can create the topic later with `yarn record:create-topic`.
+The deploy script deploys `Verdict`, `ChainlinkResolver` and `VerdictRouter`; with `GUARDED=1` it also deploys `GuardedResolver`, described [below](#a-second-oracle-guardedresolver). It then rewrites `packages/nextjs/contracts/deployedContracts.ts` for chain 296 (Hedera testnet), so the app shows your deployment and your markets instead of the reference ones. If the operator variables are set, it also creates the HCS record topic and writes the topic id into `packages/nextjs/verdict.config.ts`. Without them it skips that step, and you can create the topic later with `yarn record:create-topic`.
 
 ### 4. Verify the contracts
 
@@ -266,6 +268,22 @@ Two Hedera ideas come up throughout. **Association**: on Hedera an account must 
 
 **Chainlink.** A Chainlink price feed supplies the one number every market settles on. Without a feed nothing can resolve: each market waits 24 hours past expiry and takes the void path, which pays 0.5 HBAR per YES and per NO whatever the question was. Chainlink feeds on Hedera testnet keep their round history, which lets the resolver look up the price that was current at the expiry second rather than the price at whatever moment someone sends a transaction. That is what makes keeper-free settlement fair: the answer is the same whenever the scheduled call runs and whoever calls `resolve`.
 
+### A second oracle: GuardedResolver
+
+`packages/hardhat/contracts/resolvers/GuardedResolver.sol` is a second resolver, added with no change to `Verdict.sol`: it implements `IResolver`, the owner allows it with `setResolver`, and a market picks it at creation. It wraps `ChainlinkResolver` and the Supra push oracle on Hedera testnet (`0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917`, in `config/addresses.ts`). It passes on a reading only when Chainlink has a fresh round at the expiry second, as `ChainlinkResolver` already decides, and Supra's latest value for the same asset is within 150 basis points (1.5 percent) of it. The answer is always Chainlink's. Supra can stop a market from settling, never change its result.
+
+- **USDT against USD.** Supra quotes HBAR_USDT, BTC_USDT and ETH_USDT (pairs 75, 0 and 1), while the Chainlink feeds quote against USD. The two differ by the USDT peg as well as by oracle noise, which is why the tolerance is not tighter. On 2026-10-04 they read 0.44 percent apart on HBAR.
+- **Late resolution.** Supra keeps only its latest value, so the check means something only close to expiry. The guard refuses every reading more than 10 minutes after expiry (`maxDelay`), and any Supra value published more than 3 hours before expiry. The scheduled settlement runs a second after expiry, well inside the window. A market whose check fails, or that nobody resolves within the window, cannot settle: 24 hours after expiry it takes the void path, because `voidMarket` requires the resolver to report no fresh reading and the guard reports none from then on.
+
+Deploy it on Hedera testnet, then create a market against it:
+
+```bash
+GUARDED=1 yarn hardhat:deploy:testnet
+RESOLVER=guarded FEED=HBAR/USD KIND=Above LOWER=0.10 EXPIRY=2026-10-09T16:00:00Z yarn hardhat:create-market
+```
+
+A deploy without `GUARDED=1` skips it on Hedera testnet; a local deploy always includes it, over a mock Supra feed. The Create page offers `ChainlinkResolver` only, so guarded markets come from the script. The guarded resolver is tested on local mocks and is not part of the reference deployment.
+
 ## Contract reference
 
 The three interfaces are the contract between the contracts and everything else: `packages/hardhat/contracts/interfaces/IVerdict.sol`, `IResolver.sol` and `IVerdictRouter.sol`. They are frozen, except that new `Kind` values may be appended, which is how a market kind is added. All amounts are tinybars (8 decimals). Outcome tokens also have 8 decimals, so one unit of YES plus one unit of NO is backed by exactly one tinybar.
@@ -385,7 +403,7 @@ Local tests run against mocks of HTS and HSS that `packages/hardhat/test/helpers
 ## Extending
 
 - **New market kind.** The mechanism is shared, so a kind needs an enum value, a bounds-check term and a payoff branch in the contract, plus a line in each place the kind list is copied: the test helper's enum mirror, the frontend lib, the question text, the JSON API and HCS message builders, the scripts, this README and a payoff SVG. `rg -n "Kind.Scalar|kind === 3|Scalar" packages` finds them all. The ordered checklist is in [AGENTS.md](AGENTS.md), and [docs/TUTORIAL.md](docs/TUTORIAL.md) walks through adding an Outside kind. The committed reference deployment does not know a new kind, so redeploy afterwards.
-- **Other oracles.** Implement `IResolver` (`readingAt`, `describe`, `feedDecimals`), deploy it, and have the owner allow it with `setResolver`. `resolvers/ChainlinkResolver.sol` is the reference. A guarded resolver that cross-checks a second oracle is sketched in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#designed-but-not-built).
+- **Other oracles.** Implement `IResolver` (`readingAt`, `describe`, `feedDecimals`), deploy it, and have the owner allow it with `setResolver`. `resolvers/ChainlinkResolver.sol` is the reference, and `resolvers/GuardedResolver.sol` is a second example that wraps it ([A second oracle](#a-second-oracle-guardedresolver)).
 - **Other collateral.** Out of scope for this template. Split, merge and redeem assume HBAR in tinybars, so changing the collateral means reworking the collateral accounting in `Verdict.sol`.
 - **Other venues.** SaucerSwap V2 pools, which concentrate liquidity in a price range, suit outcome tokens because an outcome token's price always lies between 0 and 1 HBAR. Thanks to the core and router boundary, a new venue touches only `VerdictRouter.sol`; collateral code never changes. Limit orders, protocol fees and governance are further extensions in the same layer.
 - **Test an extension with Hedera Harness.** The `.harness/` recipe has a fresh agent add the Outside kind and grades the result; it is the automated form of the AGENTS.md test. With [hedera-harness](https://github.com/hedera-dev/hedera-harness) installed as a dev dependency, run `npx hedera-harness doctor` to check the setup, `npx hedera-harness validate` for the deterministic checks without an agent, and `npx hedera-harness run` for the full run.

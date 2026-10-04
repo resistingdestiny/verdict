@@ -15,6 +15,9 @@ flowchart LR
     subgraph Periphery
         R[VerdictRouter.sol]
     end
+    subgraph Optional resolver
+        GR[GuardedResolver.sol]
+    end
     subgraph Hedera services
         HTS[HTS at 0x167]
         HSS[HSS at 0x16b]
@@ -22,12 +25,16 @@ flowchart LR
     end
     subgraph External
         CL[Chainlink feeds]
+        SU[Supra push oracle]
         SS[SaucerSwap V1<br/>factory, router, pools]
     end
     V -->|create, mint, burn, transfer| HTS
     V -->|scheduleCall, hasScheduleCapacity| HSS
     V -->|readingAt| CR
     CR -->|AggregatorV3Interface| CL
+    V -.->|readingAt, for markets created on it| GR
+    GR -->|readingAt, describe, feedDecimals| CR
+    GR -->|getSvalue| SU
     R -->|split, merge, getMarket| V
     R -->|swaps, liquidity| SS
     App[App and scripts] -->|views, events| V
@@ -41,6 +48,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | `Verdict.sol` | Core | Markets, outcome tokens, collateral, settlement, redemption | HTS, HSS, a resolver |
 | `resolvers/ChainlinkResolver.sol` | Core | Finds the feed round current at a given time and checks its freshness | Chainlink |
+| `resolvers/GuardedResolver.sol` | Optional resolver | Passes on the ChainlinkResolver reading only when the Supra push oracle agrees with it | ChainlinkResolver, Supra |
 | `VerdictRouter.sol` | Periphery | Four trades in one transaction each, quotes and pool lookup. Holds nothing between transactions | Verdict, SaucerSwap |
 
 ## The core and router boundary
@@ -53,7 +61,7 @@ Three things follow from it:
 - **Less code holds value.** The contract that holds value depends on nothing outside itself except the Hedera system contracts and the resolver view. Pool math, slippage and deadlines live in the layer that holds nothing.
 - **Invariant 6 is testable.** A test can assert that no call path out of `Verdict.sol` reaches a DEX address and that it grants no allowances, and the property tests check the collateral invariants after every random action.
 
-The same reasoning applies to anything added later, such as the series and guarded resolver described at the end: if it uses only public functions and has no special rights, it cannot harm the core.
+The same reasoning applies to anything added later: if it uses only public functions and has no special rights, it cannot harm the core. `GuardedResolver`, described near the end, is one such addition, and the series sketched after it would be another.
 
 ## Create
 
@@ -188,9 +196,39 @@ Contracts see HBAR as tinybars, with 8 decimals: 1 HBAR is 100,000,000 tinybars,
 - **Reads.** The frontend reads contract views and events only. The mirror node covers what views cannot: the record feed, and the odds history from the pool's `Sync` events. Association and odds lookups go through server routes under `/api/mirror/*`.
 - **Addresses.** External addresses come from `packages/hardhat/config/addresses.ts`, the only file with hard-coded addresses. Each entry has its source URL and the date it was checked. The frontend learns the deployed contract addresses from `packages/nextjs/contracts/deployedContracts.ts`, which the deploy script rewrites.
 
+## A second oracle: GuardedResolver
+
+`resolvers/GuardedResolver.sol` implements `IResolver` over two sources: the deployed `ChainlinkResolver` and the Supra push oracle. Verdict needs no change to use it. The owner allows it with `setResolver`, and a market created against it settles through it. The answer it returns is always Chainlink's; Supra only decides whether the answer is passed on.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant V as Verdict.sol
+    participant G as GuardedResolver
+    participant CR as ChainlinkResolver
+    participant S as Supra push oracle
+    V->>G: readingAt(feedId, expiry)
+    alt more than maxDelay after expiry, or no Supra pair for the feed
+        G-->>V: ok = false
+    else
+        G->>CR: readingAt(feedId, expiry)
+        CR-->>G: ok, answer, decimals, roundId, updatedAt
+        G->>S: getSvalue(pair)
+        S-->>G: decimals, time (ms), price
+        alt Chainlink fresh, Supra fresh and within toleranceBps of Chainlink
+            G-->>V: the Chainlink reading, unchanged
+        else
+            G-->>V: ok = false
+        end
+    end
+```
+
+Configuration is fixed at deployment and the contract has no owner: the two addresses, the tolerance in basis points, `maxDelay`, `supraMaxStaleness`, and a Supra pair index per Chainlink feed id. Both prices are brought to the same decimals before the comparison `|chainlink - supra| * 10_000 <= toleranceBps * chainlink`. `describe` and `feedDecimals` delegate to `ChainlinkResolver`, and revert for a feed with no Supra pair, so no market can be created on a feed the guard would never pass.
+
+Supra keeps only its latest value, so the guard can be checked only close to expiry. Every reading requested more than `maxDelay` seconds after its time is refused. The scheduled settlement, one second after expiry, falls well inside that window. A market whose check fails, or that nobody resolves within the window, keeps reporting no fresh reading, and `voidMarket` releases it 24 hours after expiry through the existing void path. The deploy defaults (150 basis points, 10 minutes, 3 hours) and the Supra address and pairs live in `packages/hardhat/config/addresses.ts`. The Supra pairs are quoted against USDT and the Chainlink feeds against USD, which is why the tolerance is not tighter.
+
 ## Designed but not built
 
-Two stretch contracts were designed and not built. Neither exists in the repo. They are described here because both follow the core and router boundary and make natural extensions.
+One stretch contract was designed and not built. It does not exist in the repo. It is described here because it follows the core and router boundary and makes a natural extension.
 
-- **A guarded resolver** would implement `IResolver` and accept a Chainlink reading only when a second oracle agrees. The Supra push oracle on Hedera testnet was the candidate second source (address and pair in `docs/DECISIONS.md`, spike 8).
 - **A self-running series** would run a line of markets with nobody at the keyboard, for example a daily HBAR/USD Above market struck at the last settlement price. Each roll would be a chain of three scheduled calls, because one call would be too heavy: close (resolve the expiring market, remove the old pool's liquidity, redeem), open (create the next market and schedule the next roll) and seed (split from a reserve, create the pool, add liquidity). No step would revert; each would emit an event, and a `poke()` would let anyone run a stalled step. The series would stop after a set number of rolls (`maxRolls`) or when its reserve could not cover the measured cost of a roll, saying why in an event, and its owner could pause it and withdraw the reserve. A contract cannot hold a pool's LP token (the token that records a share of the pool) until it is associated with it, and that token does not exist until the pool does, so the series would associate in the seed step once the pool address is known.
