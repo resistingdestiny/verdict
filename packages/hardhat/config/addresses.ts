@@ -123,11 +123,34 @@ export const hederaTestnetSaucerSwap = {
   },
 } as const satisfies Record<string, ExternalAddress>;
 
+/**
+ * The Supra push oracle on Hedera testnet, the second source `GuardedResolver` checks Chainlink against. It
+ * keeps only the latest value per pair: `getSvalue(pairIndex)` returns (round, decimals, time, price), with the
+ * price at 18 decimals and the time in milliseconds. Its pairs are quoted against USDT while the Chainlink feeds
+ * are quoted against USD. On 2026-10-04 it updated roughly every 30 to 60 minutes; at 14:44 UTC HBAR_USDT read
+ * 0.10155 (42 minutes old) against Chainlink HBAR / USD at 0.10200 (14 minutes old), a gap of 0.44 percent.
+ */
+export const hederaTestnetSupra = {
+  pushOracle: {
+    address: "0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917",
+    description: "Supra push oracle, getSvalue(uint256 pairIndex)",
+    source: "https://hashscan.io/testnet/contract/0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917",
+    checked: "2026-10-04",
+  },
+  /** Supra pair indexes, confirmed with `getSvalue` on the same date. */
+  pairs: {
+    hbarUsdt: 75,
+    btcUsdt: 0,
+    ethUsdt: 1,
+  },
+} as const satisfies { pushOracle: ExternalAddress; pairs: Record<string, number> };
+
 export const hederaTestnet = {
   chainId: 296,
   system: hederaSystem,
   feeds: hederaTestnetFeeds,
   saucerSwap: hederaTestnetSaucerSwap,
+  supra: hederaTestnetSupra,
 } as const;
 
 /**
@@ -141,6 +164,17 @@ export const deploymentDefaults = {
    * as sweepable surplus; the owner can move it with `setTokenCreateValue`.
    */
   tokenCreateValue: 2_000_000_000n,
+  /**
+   * `GuardedResolver` settings. The tolerance is 150 basis points (1.5 percent) because the Supra pairs are
+   * quoted against USDT and the Chainlink feeds against USD; the two read 0.44 percent apart on 2026-10-04.
+   * Supra's value may be 3 hours older than the expiry, since testnet updates arrive every 30 to 60 minutes.
+   * The guard can be checked for 10 minutes after expiry, which the scheduled settlement meets by a wide margin.
+   */
+  guardedResolver: {
+    toleranceBps: 150,
+    maxDelaySeconds: 10 * 60,
+    supraMaxStalenessSeconds: 3 * 60 * 60,
+  },
 } as const;
 
 /** The resolver's feed id for an aggregator: the address left-padded to 32 bytes. */
