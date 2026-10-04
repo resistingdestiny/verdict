@@ -92,28 +92,27 @@ Low and informational findings, reviewed and left as they are:
 
 `yarn hardhat:coverage` runs `solidity-coverage` over the unit, integration and edge-path suites. The property test only runs when `VERDICT_PROPERTY=1` is set, so it is not part of the coverage run. Mocks, interfaces and the response code library are excluded in `packages/hardhat/.solcover.js`.
 
-Measured on 2026-10-03, after the review fixes:
+Measured on 2026-10-04, after the review fixes:
 
 | File | Statements | Branches | Functions | Lines |
 | --- | --- | --- | --- | --- |
 | `Verdict.sol` | 100% | 99.26% | 100% | 100% |
 | `ChainlinkResolver.sol` | 97.56% | 95.83% | 100% | 100% |
-| `VerdictRouter.sol` | 100% | 90.91% | 100% | 100% |
+| `VerdictRouter.sol` | 100% | 100% | 100% | 100% |
 
 Every line runs. The statements and branches not taken are guards that the mocks cannot trip, kept because the real network can:
 
 - `Verdict.createMarket`: the `InsufficientValue` revert after the measured charge. No mock can take more HBAR than the value sent with a call, so locally the measured charge never exceeds `msg.value`. On Hedera it can, if HSS charges the payer at scheduling time.
 - `ChainlinkResolver._search`: the return for a search that the 40-read cap stopped before it converged, which needs a phase longer than 2^40 rounds.
-- `VerdictRouter._assertNothingKept`: the HBAR and YES arms of the holdings check. The test that trips the check pushes NO into the router from the payout; the other two arms are the same comparison on the other two holdings.
-- `VerdictRouter.quoteSellNo` and `sellNo`: the zero-net arm, taken only when the matching YES costs more than the NO is worth, which the seeded pools never price.
-- `VerdictRouter.reserves`: the arm of `token0() == yes` that handles a pair whose `token0` is the YES token. SaucerSwap orders a pair's tokens by address, and the WHBAR token (`0.0.15058`, `0x3aD2`) has a lower address than any token Verdict can create, because Hedera assigns entity numbers in increasing order. On both networks `token0` is therefore always WHBAR. The arm stays so the router does not depend on that ordering, and the mock pair, which fixes WHBAR as `token0` like the real one, cannot reach it.
 
 The paths that only a misbehaving system contract or aggregator can reach are covered through the mocks' test controls:
 
 - `MockHederaTokenService.setForcedCode(selector, code)` makes one HTS call return a chosen code, and the same mock returns code 262 once an account has used up its automatic association slots.
 - `MockHederaScheduleService.setForcedCode(22)` reproduces a schedule reported as a success without an address, and `setCapacityReverts` makes the capacity probe revert.
 - `MockAggregatorV3.setHistoryStart` stands in for an aggregator that dropped its early rounds.
-- `MockCaller` is a contract account that re-enters `createMarket` from its refund and `sweepSurplus` from its payment, which exercises the reentrancy guards on the two functions whose payment goes to the caller.
+- `MockCaller` is a contract account that re-enters `createMarket` from its refund and `sweepSurplus` from its payment, which exercises the reentrancy guards on the two functions whose payment goes to the caller. As a trader it pushes HBAR (`setReenterValue`), YES or NO back into the router from its payout, which trips each arm of the router's holdings check.
+- `MockPoolView` answers the factory and pair views with a chosen `token0` and reserves. It puts the YES token on the `token0` side of a pair, which no real Verdict pool can be: SaucerSwap orders a pair's tokens by address, and the WHBAR token (`0.0.15058`, `0x3aD2`) is older, so lower, than any token Verdict creates. The router's `reserves` handles both orders so it does not depend on that.
+- The zero-net arm of `sellNo` and `quoteSellNo` is reached with a large sale against a small pool, where buying back the YES costs more than the NO is worth.
 
 ### Scheduled run timing
 

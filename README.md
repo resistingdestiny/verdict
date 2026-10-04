@@ -10,7 +10,7 @@ What you get:
 - **One transaction per trade.** A router buys and sells both YES and NO against a SaucerSwap V1 pool in one transaction each, and it sits outside the contract that holds the money.
 - **A public audit trail.** Every market's terms and result go to a Hedera Consensus Service (HCS) topic, built from on-ledger events. A JSON API and `/llms.txt` let agents read markets and trade.
 - **A working app on first run.** The market list, market pages with odds history, a guided Create page, a portfolio and the record page show live Hedera testnet markets before you deploy anything.
-- **Tests and evidence.** 112 contract tests against local stand-ins for HTS and HSS, property tests for the collateral rules, CI, and measured gas and HBAR for every step on testnet.
+- **Tests and evidence.** 115 contract tests against local stand-ins for HTS and HSS, property tests for the collateral rules, CI, and measured gas and HBAR for every step on testnet.
 
 ```bash
 npm create scaffold-hbar@latest -- --template resistingdestiny/verdict
@@ -118,7 +118,7 @@ The scripts and tests also read a few optional settings. Put them in front of th
 ### 3. Test and deploy
 
 ```bash
-yarn hardhat:test            # 112 tests on local mocks, about 30 seconds
+yarn hardhat:test            # 115 tests on local mocks, about 30 seconds
 yarn hardhat:deploy:testnet  # about 40 seconds and 5 HBAR
 ```
 

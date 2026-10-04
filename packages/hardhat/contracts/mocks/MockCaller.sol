@@ -3,12 +3,15 @@ pragma solidity ^0.8.28;
 
 /// @title MockCaller
 /// @notice A contract account for tests: it forwards any call with any value, can refuse the HBAR it is
-///         paid, and can re-enter a target with a stored call from the payment it receives. It stands in
-///         for a contract creator, a contract owner or a contract trader, so the reentrancy guards on
-///         `createMarket` and `sweepSurplus` and the router's `TransferFailed` path can be exercised.
+///         paid, and can re-enter a target with a stored call, optionally carrying HBAR, from the payment it
+///         receives. It stands in for a contract creator, a contract owner or a contract trader, so the
+///         reentrancy guards on `createMarket` and `sweepSurplus`, the router's `TransferFailed` path and
+///         its `RouterNotEmpty` check can be exercised.
 contract MockCaller {
     address public reenterTarget;
     bytes public reenterData;
+    /// @notice Tinybars sent with the stored call, paid from this contract's balance. Zero by default.
+    uint256 public reenterValue;
     bool public rejectHbar;
     /// @notice Whether the last re-entry attempt succeeded, and the bytes it returned or reverted with.
     bool public reentered;
@@ -18,6 +21,11 @@ contract MockCaller {
     function arm(address target, bytes calldata data) external {
         reenterTarget = target;
         reenterData = data;
+    }
+
+    /// @notice Set the tinybars the stored call carries.
+    function setReenterValue(uint256 value) external {
+        reenterValue = value;
     }
 
     /// @notice When true, any HBAR payment to this contract reverts.
@@ -42,6 +50,6 @@ contract MockCaller {
         if (reenterTarget == address(0)) return;
         address target = reenterTarget;
         reenterTarget = address(0);
-        (reentered, reentryResult) = target.call(reenterData);
+        (reentered, reentryResult) = target.call{ value: reenterValue }(reenterData);
     }
 }

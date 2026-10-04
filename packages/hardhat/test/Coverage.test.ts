@@ -3,7 +3,7 @@ import { ethers, network } from "hardhat";
 import type { MockCaller, MockHtsToken } from "../typechain-types";
 import { now, ONE_HBAR, setTime } from "./helpers/hedera";
 import { createMarket, INT64_MAX, Kind, pushRound } from "./helpers/verdict";
-import { deployTrading, seedPool, type TradingContext } from "./helpers/trading";
+import { deployTrading, seedPool, WHBAR_TOKEN, type TradingContext } from "./helpers/trading";
 
 const CODE_SUCCESS = 22n;
 const CODE_INVALID_SIGNATURE = 7n;
@@ -108,6 +108,66 @@ describe("Coverage: edge paths of Verdict and VerdictRouter", function () {
         router,
         "RouterNotEmpty",
       );
+    });
+
+    it("reverts RouterNotEmpty when a trader pushes HBAR or YES into the router from its payout", async function () {
+      // The same final check as above, reached through its HBAR and YES terms: a trader contract sells YES
+      // and, from the HBAR payout, sends 1 tinybar back to the router, or moves 1 YES into it.
+      const { bob, router, hts, verdict } = ctx;
+      const yesIn = ONE_HBAR;
+      const sellYes = router.interface.encodeFunctionData("sellYes", [id, yesIn, 0n, deadline]);
+      for (const push of ["hbar", "yes"] as const) {
+        const caller = await deployCaller();
+        const callerAddress = await caller.getAddress();
+        await verdict.connect(bob).split(id, callerAddress, bob.address, { value: 2n * yesIn });
+        await caller.call(
+          await hts.getAddress(),
+          hts.interface.encodeFunctionData("approve", [await yes.getAddress(), ctx.routerAddress, yesIn]),
+        );
+        if (push === "hbar") {
+          await caller.arm(ctx.routerAddress, "0x");
+          await caller.setReenterValue(1n);
+        } else {
+          await caller.arm(
+            await yes.getAddress(),
+            yes.interface.encodeFunctionData("transfer", [ctx.routerAddress, 1n]),
+          );
+        }
+        await expect(caller.call(ctx.routerAddress, sellYes)).to.be.revertedWithCustomError(router, "RouterNotEmpty");
+      }
+    });
+
+    it("quotes and settles sellNo at a net of zero when the YES leg costs more than the NO is worth", async function () {
+      // The pool holds 20 YES against 10 HBAR, so buying back 10 YES costs about 10.03 HBAR: more than the
+      // 10 HBAR the merge returns. The quote's net is zero, a positive bound fails, and a zero bound trades.
+      const { bob, router, verdict } = ctx;
+      const noIn = 10n * ONE_HBAR;
+      const [needed, net] = await router.quoteSellNo(id, noIn);
+      expect(needed).to.be.greaterThan(noIn);
+      expect(net).to.equal(0n);
+      await verdict.connect(bob).split(id, bob.address, bob.address, { value: noIn });
+      await no.connect(bob).approve(ctx.routerAddress, noIn);
+      await expect(router.connect(bob).sellNo(id, noIn, 1n, deadline, { value: needed }))
+        .to.be.revertedWithCustomError(router, "Slippage")
+        .withArgs(1n, 0n);
+      const extra = ONE_HBAR;
+      const trade = router.connect(bob).sellNo(id, noIn, 0n, deadline, { value: needed + extra });
+      await expect(trade).to.emit(router, "Traded").withArgs(id, bob.address, 3n, noIn, noIn, extra);
+      await expect(trade).to.changeEtherBalance(bob, noIn - needed);
+    });
+
+    it("reports reserves as YES then HBAR whichever side of the pair the YES token is on", async function () {
+      const pool = await (await ethers.getContractFactory("MockPoolView")).deploy();
+      const viewRouter = await (
+        await ethers.getContractFactory("VerdictRouter")
+      ).deploy(ctx.verdictAddress, ctx.saucerRouterAddress, await pool.getAddress(), WHBAR_TOKEN);
+      const yesReserve = 7n * ONE_HBAR;
+      const hbarReserve = 3n * ONE_HBAR;
+      await pool.set(await yes.getAddress(), yesReserve, hbarReserve);
+      expect(await viewRouter.reserves(id)).to.deep.equal([yesReserve, hbarReserve]);
+      await pool.set(WHBAR_TOKEN, hbarReserve, yesReserve);
+      expect(await viewRouter.reserves(id)).to.deep.equal([yesReserve, hbarReserve]);
+      expect(await viewRouter.impliedProbability(id)).to.equal((hbarReserve * ONE_HBAR) / yesReserve);
     });
 
     it("surfaces an HTS association failure as HtsError", async function () {
