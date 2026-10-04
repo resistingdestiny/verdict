@@ -104,7 +104,7 @@ Measured on 2026-10-03, after the review fixes:
 | `VerdictRouter.sol` | 100% | 90.91% | 100% | 100% |
 | `GuardedResolver.sol` | 100% | 100% | 100% | 100% |
 
-`GuardedResolver.sol` was measured on 2026-10-04 when it was added, with its own test file (`npx hardhat coverage --testfiles test/GuardedResolver.test.ts` in `packages/hardhat`). The other three rows are unchanged, since neither those contracts nor their tests changed.
+Remeasured on 2026-10-04 after `GuardedResolver.sol` was added: its row is new and the other three did not change.
 
 Every line runs. The statements and branches not taken are guards that the mocks cannot trip, kept because the real network can:
 
