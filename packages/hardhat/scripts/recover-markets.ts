@@ -1,10 +1,10 @@
-// Recovers the deployer's HBAR from deployment v1 after the scheduled-run timing defect: resolves any market
-// past its expiry that is still open (the manual fallback the README documents), removes the deployer's pool
-// liquidity, and redeems the YES and NO it holds. Run by hand on testnet:
-//   VERDICT_V1=0x51c0810324931151bA31db317F23810040e0a250 MARKETS=1,2,3,4 \
-//   yarn workspace @sh/hardhat hardhat run scripts/spikes/recover-v1.ts --network hederaTestnet
-import { ethers } from "hardhat";
-import { TESTNET_ADDRESSES } from "../../config/addresses";
+// Recovers the deployer's HBAR from finished markets: resolves any market past its expiry that is still open
+// (the manual fallback the README documents), removes the deployer's pool liquidity, and redeems the YES and
+// NO it holds. Run by hand on testnet:
+//   MARKETS=1,2,3 yarn hardhat:recover-markets
+// VERDICT overrides the contract address; the default is the Verdict in packages/hardhat/deployments/hederaTestnet.
+import { deployments, ethers } from "hardhat";
+import { TESTNET_ADDRESSES } from "../config/addresses";
 
 const HASHSCAN = "https://hashscan.io/testnet/transaction";
 const GAS = 3_000_000n;
@@ -17,8 +17,7 @@ const routerAbi = [
 ];
 
 async function main() {
-  const verdictAddress = process.env.VERDICT_V1;
-  if (!verdictAddress) throw new Error("set VERDICT_V1 to the deployment v1 Verdict address");
+  const verdictAddress = process.env.VERDICT ?? (await deployments.get("Verdict")).address;
   const ids = (process.env.MARKETS ?? "").split(",").filter(Boolean).map(BigInt);
   const [deployer] = await ethers.getSigners();
   const verdict = await ethers.getContractAt("IVerdict", verdictAddress, deployer);

@@ -20,6 +20,7 @@
     "format": "prettier --write './**/*.(ts|sol)'",
     "lint": "eslint",
     "lint-staged": "eslint",
+    "recover-markets": "hardhat run scripts/recover-markets.ts --network hederaTestnet",
     "reference-deployment": "hardhat run scripts/reference-deployment.ts --network hederaTestnet",
     "seed-pool": "hardhat run scripts/seed-pool.ts --network hederaTestnet",
     "test": "hardhat test",

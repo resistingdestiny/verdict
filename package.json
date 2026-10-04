@@ -28,6 +28,7 @@
     "hardhat:format": "yarn workspace @sh/hardhat format",
     "hardhat:lint": "yarn workspace @sh/hardhat lint",
     "hardhat:lint-staged": "yarn workspace @sh/hardhat lint-staged",
+    "hardhat:recover-markets": "yarn workspace @sh/hardhat recover-markets",
     "hardhat:reference-deployment": "yarn workspace @sh/hardhat reference-deployment",
     "hardhat:seed-pool": "yarn workspace @sh/hardhat seed-pool",
     "hardhat:test": "yarn workspace @sh/hardhat test",
