@@ -36,6 +36,7 @@ import {
   tokenUnitsToWhole,
   unixToLocalInput,
 } from "~~/lib/format";
+import { GAS } from "~~/lib/gas";
 import { KINDS, KIND_DESCRIPTIONS, KIND_LABELS, Kind, boundsValid, kindUsesUpper, questionText } from "~~/lib/payoff";
 import { nowSeconds } from "~~/lib/verdict";
 import { getParsedError } from "~~/utils/scaffold-hbar";
@@ -177,6 +178,7 @@ const CreateFlow = () => {
           functionName: "createMarket",
           args: [resolverAddress, selected.feedId, kind, lower, upper, BigInt(expiry)],
           value: tinybarsToWeibars(creationCost.data),
+          gas: GAS.createMarket,
         },
         {
           onBlockConfirmation: receipt => {
@@ -198,6 +200,7 @@ const CreateFlow = () => {
         functionName: "split",
         args: [marketId, account, account],
         value: tinybarsToWeibars(splitAmount),
+        gas: GAS.split,
       });
       if (hash) setHashes(previous => [...previous, hash]);
       await Promise.all([yesState.refetch(), noState.refetch()]);
@@ -218,6 +221,7 @@ const CreateFlow = () => {
           functionName: "addLiquidityETH",
           args: [market.yes, yesLiquidity, yesLiquidity, minHbar, account, deadline],
           value: tinybarsToWeibars(hbarLiquidity),
+          gas: GAS.addLiquidity,
         });
       } else {
         if (feeTinybars.data === undefined) return;
@@ -226,6 +230,7 @@ const CreateFlow = () => {
           functionName: "addLiquidityETHNewPool",
           args: [market.yes, yesLiquidity, yesLiquidity, minHbar, account, deadline],
           value: tinybarsToWeibars(hbarLiquidity + fee),
+          gas: GAS.createPool,
         });
       }
       if (hash) setHashes(previous => [...previous, hash]);

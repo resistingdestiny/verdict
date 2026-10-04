@@ -18,6 +18,7 @@ import {
   tinybarsToWeibars,
   tokenUnitsToWhole,
 } from "~~/lib/format";
+import { GAS } from "~~/lib/gas";
 import { type MarketView, marketPhase, nowSeconds } from "~~/lib/verdict";
 import { getParsedError } from "~~/utils/scaffold-hbar";
 
@@ -120,23 +121,27 @@ export const TradePanel = ({ market, hasPool, onTraded }: TradePanelProps) => {
           functionName: "buyYes",
           args: [market.id, applySlippage(buyYesOut, bps, "down"), deadline],
           value: tinybarsToWeibars(amount),
+          gas: GAS.buyYes,
         });
       } else if (trade === "sellYes" && sellYesOut !== undefined) {
         hash = await writeContractAsync({
           functionName: "sellYes",
           args: [market.id, amount, applySlippage(sellYesOut, bps, "down"), deadline],
+          gas: GAS.sellYes,
         });
       } else if (trade === "buyNo" && buyNoOut !== undefined) {
         hash = await writeContractAsync({
           functionName: "buyNo",
           args: [market.id, applySlippage(buyNoOut[1], bps, "down"), deadline],
           value: tinybarsToWeibars(amount),
+          gas: GAS.buyNo,
         });
       } else if (trade === "sellNo" && sellNoOut !== undefined) {
         hash = await writeContractAsync({
           functionName: "sellNo",
           args: [market.id, amount, applySlippage(sellNoOut[1], bps, "down"), deadline],
           value: tinybarsToWeibars(applySlippage(sellNoOut[0], bps, "up")),
+          gas: GAS.sellNo,
         });
       }
       if (hash) setHashes(previous => [...previous, hash]);

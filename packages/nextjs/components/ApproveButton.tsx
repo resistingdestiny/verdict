@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Address } from "viem";
 import { useWriteContract } from "wagmi";
 import { useTargetNetwork, useTransactor } from "~~/hooks/scaffold-hbar";
+import { GAS } from "~~/lib/gas";
 import { htsTokenAbi } from "~~/lib/hts";
 import { getParsedError } from "~~/utils/scaffold-hbar";
 
@@ -33,6 +34,7 @@ export const ApproveButton = ({ token, spender, amount, label, onDone, className
           functionName: "approve",
           args: [spender, amount],
           chainId: targetNetwork.id,
+          gas: GAS.approve,
         }),
       );
       await onDone?.();

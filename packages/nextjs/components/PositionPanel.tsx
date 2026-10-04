@@ -18,6 +18,7 @@ import {
   tinybarsToWeibars,
   tokenUnitsToWhole,
 } from "~~/lib/format";
+import { GAS } from "~~/lib/gas";
 import { type MarketView, marketPhase, nowSeconds } from "~~/lib/verdict";
 import { getParsedError } from "~~/utils/scaffold-hbar";
 
@@ -88,13 +89,24 @@ export const PositionPanel = ({ market, onChanged, initial }: PositionPanelProps
         functionName: "split",
         args: [market.id, account as string, account as string],
         value: tinybarsToWeibars(amount as bigint),
+        gas: GAS.split,
       }),
     );
   const merge = () =>
-    run(() => writeContractAsync({ functionName: "merge", args: [market.id, amount as bigint, account as string] }));
+    run(() =>
+      writeContractAsync({
+        functionName: "merge",
+        args: [market.id, amount as bigint, account as string],
+        gas: GAS.merge,
+      }),
+    );
   const redeem = () =>
     run(() =>
-      writeContractAsync({ functionName: "redeem", args: [market.id, yesAmount, noAmount, account as string] }),
+      writeContractAsync({
+        functionName: "redeem",
+        args: [market.id, yesAmount, noAmount, account as string],
+        gas: GAS.redeem,
+      }),
     );
 
   const payoutYes = market.payout;

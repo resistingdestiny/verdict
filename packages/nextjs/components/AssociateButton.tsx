@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Address } from "viem";
 import { useWriteContract } from "wagmi";
 import { useTargetNetwork, useTransactor } from "~~/hooks/scaffold-hbar";
+import { GAS } from "~~/lib/gas";
 import { htsTokenAbi } from "~~/lib/hts";
 import { getParsedError } from "~~/utils/scaffold-hbar";
 
@@ -28,7 +29,13 @@ export const AssociateButton = ({ token, label, onDone, className = "" }: Associ
     setBusy(true);
     try {
       await writeTx(() =>
-        writeContractAsync({ address: token, abi: htsTokenAbi, functionName: "associate", chainId: targetNetwork.id }),
+        writeContractAsync({
+          address: token,
+          abi: htsTokenAbi,
+          functionName: "associate",
+          chainId: targetNetwork.id,
+          gas: GAS.associate,
+        }),
       );
       await onDone?.();
     } catch (error) {
